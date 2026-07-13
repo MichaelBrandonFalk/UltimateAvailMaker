@@ -2,6 +2,8 @@
 
 Current public version: `V1_0`.
 
+Public browser version: https://michaelbrandonfalk.github.io/UltimateAvailMaker/
+
 Ultimate Avail Maker is a browser-based local tool for creating and converting avails workbooks.
 
 ## Outputs
