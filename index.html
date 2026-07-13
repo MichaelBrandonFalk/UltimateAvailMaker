@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ultimate Avail Maker</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.0</span></p>
+          <h1>Avails</h1>
+        </div>
+        <a class="download-link" href="downloads/Ultimate Avail Maker V1_0.zip" download>Download V1.0</a>
+      </header>
+
+      <main class="workspace">
+        <nav class="mode-tabs" aria-label="Mode">
+          <button type="button" class="active" data-tab-button="movie" aria-selected="true">Movie</button>
+          <button type="button" data-tab-button="tv" aria-selected="false">TV</button>
+          <button type="button" data-tab-button="convert" aria-selected="false">Convert</button>
+        </nav>
+
+        <section class="tool-panel" data-tab-panel="movie">
+          <form id="movie-form" class="form-grid" autocomplete="off">
+            <label class="field" for="movie-title">
+              <span>Title</span>
+              <input id="movie-title" name="title" required>
+            </label>
+            <label class="field" for="movie-sku">
+              <span>SKU</span>
+              <input id="movie-sku" name="sku" required>
+            </label>
+            <label class="field" for="movie-start">
+              <span>Start Date</span>
+              <input id="movie-start" name="startDate" type="date" required>
+            </label>
+            <label class="field" for="movie-end">
+              <span>End Date</span>
+              <input id="movie-end" name="endDate" type="date" required>
+            </label>
+            <label class="field" for="movie-gracenote">
+              <span>Gracenote ID</span>
+              <input id="movie-gracenote" name="gracenoteId">
+            </label>
+          </form>
+          <div class="actions">
+            <button type="button" class="primary-action" data-build-movie="standard">Standard EMA</button>
+            <button type="button" class="primary-action alt" data-build-movie="youtube">YouTube</button>
+          </div>
+          <p id="movie-status" class="status-line"></p>
+          <section class="preview-surface" aria-live="polite">
+            <div class="surface-header">
+              <span>Preview</span>
+              <button type="button" class="secondary-action" data-clear-preview="movie">Clear</button>
+            </div>
+            <div id="movie-preview" class="preview-grid"></div>
+          </section>
+        </section>
+
+        <section class="tool-panel" data-tab-panel="tv" hidden>
+          <form id="tv-form" class="form-grid" autocomplete="off">
+            <label class="field" for="series-name">
+              <span>Series Name</span>
+              <input id="series-name" name="seriesName" required>
+            </label>
+            <label class="field" for="season-number">
+              <span>Season Number</span>
+              <input id="season-number" name="seasonNumber" inputmode="numeric" required>
+            </label>
+            <label class="field" for="series-sku">
+              <span>Series SKU</span>
+              <input id="series-sku" name="seriesSku" required>
+            </label>
+            <label class="field" for="season-sku">
+              <span>Season SKU</span>
+              <input id="season-sku" name="seasonSku" required>
+            </label>
+            <label class="field" for="tv-start">
+              <span>Start Date</span>
+              <input id="tv-start" name="startDate" type="date" required>
+            </label>
+            <label class="field" for="tv-end">
+              <span>End Date</span>
+              <input id="tv-end" name="endDate" type="date" required>
+            </label>
+            <label class="field" for="show-gracenote">
+              <span>Gracenote Show ID</span>
+              <input id="show-gracenote" name="gracenoteShowId">
+            </label>
+          </form>
+
+          <section class="episode-surface">
+            <div class="surface-header">
+              <span>Episodes</span>
+              <div class="header-actions">
+                <button type="button" class="secondary-action" id="paste-episodes-run">Paste Rows</button>
+                <button type="button" class="secondary-action" id="add-episode-row">Add Row</button>
+              </div>
+            </div>
+            <textarea id="episode-paste" class="paste-box" rows="3" spellcheck="false"></textarea>
+            <div class="table-wrap">
+              <table class="input-table" id="episode-table">
+                <thead>
+                  <tr>
+                    <th>Episode #</th>
+                    <th>Episode Name</th>
+                    <th>Episode SKU</th>
+                    <th>Gracenote Episode ID</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="episode-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <div class="actions">
+            <button type="button" class="primary-action" data-build-tv="standard">Standard EMA</button>
+            <button type="button" class="primary-action alt" data-build-tv="youtube">YouTube</button>
+          </div>
+          <p id="tv-status" class="status-line"></p>
+          <section class="preview-surface" aria-live="polite">
+            <div class="surface-header">
+              <span>Preview</span>
+              <button type="button" class="secondary-action" data-clear-preview="tv">Clear</button>
+            </div>
+            <div id="tv-preview" class="preview-grid"></div>
+          </section>
+        </section>
+
+        <section class="tool-panel" data-tab-panel="convert" hidden>
+          <div class="convert-grid">
+            <label class="field" for="convert-target">
+              <span>Output</span>
+              <select id="convert-target">
+                <option value="youtube" selected>YouTube</option>
+                <option value="standard">Standard EMA</option>
+              </select>
+            </label>
+            <label class="field file-field" for="convert-file">
+              <span>Avails File</span>
+              <input id="convert-file" type="file" accept=".xlsx,.xls,.csv,.txt,.tsv">
+            </label>
+            <label class="field" for="convert-sheet">
+              <span>Sheet</span>
+              <select id="convert-sheet" disabled></select>
+            </label>
+          </div>
+          <textarea id="convert-paste" class="paste-box large" rows="7" spellcheck="false"></textarea>
+          <div class="actions">
+            <button type="button" class="primary-action alt" id="convert-run">Convert</button>
+            <button type="button" class="secondary-action" id="convert-download" disabled>Download XLSX</button>
+          </div>
+          <p id="convert-status" class="status-line"></p>
+          <section class="preview-surface" aria-live="polite">
+            <div class="surface-header">
+              <span>Preview</span>
+              <button type="button" class="secondary-action" data-clear-preview="convert">Clear</button>
+            </div>
+            <div id="convert-preview" class="preview-grid"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="libs/xlsx.full.min.js"></script>
+    <script src="avail_core.js"></script>
+    <script src="site_logic.js"></script>
+  </body>
+</html>
