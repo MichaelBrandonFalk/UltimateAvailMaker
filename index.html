@@ -10,10 +10,10 @@
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.0</span></p>
+          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.1</span></p>
           <h1>Avails</h1>
         </div>
-        <a class="download-link" href="downloads/Ultimate Avail Maker V1_0.zip" download>Download V1.0</a>
+        <a class="download-link" href="downloads/Ultimate Avail Maker V1_1.zip" download>Download V1.1</a>
       </header>
 
       <main class="workspace">
@@ -24,6 +24,12 @@
         </nav>
 
         <section class="tool-panel" data-tab-panel="movie">
+          <div class="import-row">
+            <label class="field file-field" for="movie-import-file">
+              <span>WhatsOn Upload</span>
+              <input id="movie-import-file" type="file" accept=".xlsx,.xls,.csv,.txt,.tsv">
+            </label>
+          </div>
           <form id="movie-form" class="form-grid" autocomplete="off">
             <label class="field" for="movie-title">
               <span>Title</span>
@@ -61,6 +67,12 @@
         </section>
 
         <section class="tool-panel" data-tab-panel="tv" hidden>
+          <div class="import-row">
+            <label class="field file-field" for="tv-import-file">
+              <span>WhatsOn Upload</span>
+              <input id="tv-import-file" type="file" accept=".xlsx,.xls,.csv,.txt,.tsv">
+            </label>
+          </div>
           <form id="tv-form" class="form-grid" autocomplete="off">
             <label class="field" for="series-name">
               <span>Series Name</span>
@@ -80,11 +92,11 @@
             </label>
             <label class="field" for="tv-start">
               <span>Start Date</span>
-              <input id="tv-start" name="startDate" type="date" required>
+              <input id="tv-start" name="startDate" type="date">
             </label>
             <label class="field" for="tv-end">
               <span>End Date</span>
-              <input id="tv-end" name="endDate" type="date" required>
+              <input id="tv-end" name="endDate" type="date">
             </label>
             <label class="field" for="show-gracenote">
               <span>Gracenote Show ID</span>
@@ -97,6 +109,8 @@
               <span>Episodes</span>
               <div class="header-actions">
                 <button type="button" class="secondary-action" id="paste-episodes-run">Paste Rows</button>
+                <button type="button" class="secondary-action" id="apply-tv-start">Apply Start Date to Entire Series</button>
+                <button type="button" class="secondary-action" id="apply-tv-end">Apply End Date to Entire Series</button>
                 <button type="button" class="secondary-action" id="add-episode-row">Add Row</button>
               </div>
             </div>
@@ -109,6 +123,8 @@
                     <th>Episode Name</th>
                     <th>Episode SKU</th>
                     <th>Gracenote Episode ID</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
                     <th></th>
                   </tr>
                 </thead>

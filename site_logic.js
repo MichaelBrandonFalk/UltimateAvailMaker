@@ -48,6 +48,19 @@
   }
 
   function wireMovie() {
+    $("#movie-import-file").addEventListener("change", async function importMovie(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      try {
+        const imported = await importWhatsOnFile(file);
+        if (!imported.movie) throw new Error("No movie rows found in upload.");
+        fillForm($("#movie-form"), imported.movie);
+        setStatus("movie", "Loaded " + file.name + ": " + imported.counts.movies + " movie row(s). Review fields and add dates before exporting.", "ok");
+      } catch (err) {
+        setStatus("movie", err.message || String(err), "error");
+      }
+    });
+
     $$("[data-build-movie]").forEach(function addBuildHandler(button) {
       button.addEventListener("click", function buildMovie() {
         try {
@@ -70,6 +83,32 @@
       addEpisodeRow();
     });
 
+    $("#tv-import-file").addEventListener("change", async function importTv(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      try {
+        const imported = await importWhatsOnFile(file);
+        if (!imported.tv) throw new Error("No episode rows found in upload.");
+        fillForm($("#tv-form"), imported.tv);
+        $("#episode-body").replaceChildren();
+        imported.tv.episodes.forEach(function addImportedEpisode(episode) {
+          addEpisodeRow(episode);
+        });
+        if (!$("#episode-body").children.length) addEpisodeRow();
+        setStatus("tv", "Loaded " + file.name + ": " + imported.tv.episodes.length + " episode row(s) in the first series/season group. Review fields and add dates before exporting.", "ok");
+      } catch (err) {
+        setStatus("tv", err.message || String(err), "error");
+      }
+    });
+
+    $("#apply-tv-start").addEventListener("click", function applyStart() {
+      applyTvDate("startDate", $("#tv-start").value);
+    });
+
+    $("#apply-tv-end").addEventListener("click", function applyEnd() {
+      applyTvDate("endDate", $("#tv-end").value);
+    });
+
     $("#paste-episodes-run").addEventListener("click", function pasteEpisodes() {
       const text = $("#episode-paste").value.trim();
       if (!text) return;
@@ -85,7 +124,9 @@
           episodeNumber: row[0] || "",
           episodeName: row[1] || "",
           episodeSku: row[2] || "",
-          gracenoteEpisodeId: row[3] || ""
+          gracenoteEpisodeId: row[3] || "",
+          startDate: row[4] || "",
+          endDate: row[5] || ""
         });
       });
       if (!$("#episode-body").children.length) addEpisodeRow();
@@ -174,6 +215,8 @@
       '<td><input data-episode-field="episodeName"></td>',
       '<td><input data-episode-field="episodeSku"></td>',
       '<td><input data-episode-field="gracenoteEpisodeId"></td>',
+      '<td><input data-episode-field="startDate" type="date"></td>',
+      '<td><input data-episode-field="endDate" type="date"></td>',
       '<td><button type="button" class="icon-action" aria-label="Remove row">×</button></td>'
     ].join("");
 
@@ -190,6 +233,17 @@
     $("#episode-body").append(row);
   }
 
+  function applyTvDate(fieldName, value) {
+    if (!value) {
+      setStatus("tv", fieldName === "startDate" ? "Choose a Start Date first." : "Choose an End Date first.", "error");
+      return;
+    }
+    $$('[data-episode-field="' + fieldName + '"]', $("#episode-body")).forEach(function setDate(input) {
+      input.value = value;
+    });
+    setStatus("tv", (fieldName === "startDate" ? "Start" : "End") + " date applied to every episode row.", "ok");
+  }
+
   function readEpisodeRows() {
     return $$("tr", $("#episode-body")).map(function mapRow(row) {
       const out = {};
@@ -197,6 +251,30 @@
         out[input.dataset.episodeField] = input.value.trim();
       });
       return out;
+    });
+  }
+
+  async function importWhatsOnFile(file) {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
+    let lastError = null;
+    for (let i = 0; i < workbook.SheetNames.length; i += 1) {
+      const sheetName = workbook.SheetNames[i];
+      try {
+        const imported = Core.importWhatsOnMatrix(sheetToMatrix(workbook.Sheets[sheetName]));
+        if (imported.movie || imported.tv) return imported;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError || new Error("Could not read the upload.");
+  }
+
+  function fillForm(form, values) {
+    Object.entries(values || {}).forEach(function setValue(entry) {
+      if (entry[0] === "episodes") return;
+      const field = $('[name="' + entry[0] + '"]', form);
+      if (field && entry[1] !== undefined && entry[1] !== null) field.value = entry[1];
     });
   }
 

@@ -138,6 +138,12 @@ h1 {
   gap: 14px;
 }
 
+.import-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px);
+  margin-bottom: 14px;
+}
+
 .field {
   display: grid;
   gap: 6px;
@@ -284,7 +290,7 @@ textarea:focus {
 .input-table {
   border-collapse: collapse;
   width: 100%;
-  min-width: 780px;
+  min-width: 1040px;
 }
 
 .preview-grid th,

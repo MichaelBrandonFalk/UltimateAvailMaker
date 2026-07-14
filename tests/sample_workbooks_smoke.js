@@ -9,6 +9,7 @@ const samples = [
   "/Users/brandon.falk/Downloads/Standard EMA Output.xlsx",
   "/Users/brandon.falk/Downloads/YouTube Style Output.xlsx"
 ];
+const whatsonSample = "/Users/brandon.falk/Downloads/Curated for H.E.R..xlsx";
 
 if (!samples.every((samplePath) => fs.existsSync(samplePath))) {
   console.log("sample workbook smoke skipped");
@@ -55,5 +56,17 @@ XLSX.utils.book_append_sheet(outputWorkbook, worksheet, "Movies");
 const outputPath = path.join(os.tmpdir(), "ultimate_avail_maker_sample_smoke.xlsx");
 fs.writeFileSync(outputPath, XLSX.write(outputWorkbook, { type: "buffer", bookType: "xlsx" }));
 assert.ok(fs.existsSync(outputPath));
+
+if (fs.existsSync(whatsonSample)) {
+  const whatsonRows = matrixFromWorkbook(whatsonSample, "Sheet1");
+  const imported = Core.importWhatsOnMatrix(whatsonRows);
+  assert.equal(imported.tv.seriesName, "Curated for H.E.R.");
+  assert.equal(imported.tv.seasonNumber, "1");
+  assert.equal(imported.tv.seriesSku, "bb38ee54-5029-562e-b19b-e7ef830c0dbd");
+  assert.equal(imported.tv.seasonSku, "CrtdFrHRS01");
+  assert.equal(imported.tv.episodes.length, 6);
+  assert.equal(imported.tv.episodes[0].episodeNumber, "101");
+  assert.equal(imported.tv.episodes[0].episodeName, "Erica Kirk");
+}
 
 console.log("sample workbook smoke passed");

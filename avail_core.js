@@ -7,8 +7,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function buildApi() {
   "use strict";
 
-  const VERSION = "V1_0";
-  const VERSION_LABEL = "V1.0";
+  const VERSION = "V1_1";
+  const VERSION_LABEL = "V1.1";
   const NY_TZ = "America/New_York";
   const YT_END_MAX_YMD = "2036-01-02";
 
@@ -214,17 +214,17 @@
     const seriesSku = required(input.seriesSku, "Series SKU");
     const seasonSku = required(input.seasonSku, "Season SKU");
     const seasonNumber = required(input.seasonNumber, "Season number");
-    const start = normalizeYmd(input.startDate, "Start date");
-    const end = normalizeYmd(input.endDate, "End date");
+    const start = coerceToYmd(input.startDate);
+    const end = coerceToYmd(input.endDate);
     const gracenoteShowId = clean(input.gracenoteShowId);
-    const episodes = normalizeEpisodes(input.episodes || []);
+    const episodes = normalizeEpisodes(input.episodes || [], start, end);
     const tmpl = getTemplate(targetKey, "Episode");
     const rows = headersFor(tmpl);
 
     episodes.forEach(function addEpisode(ep) {
       const values = targetKey === "standard"
-        ? standardTvValues(seriesName, seriesSku, seasonSku, seasonNumber, ep, start, end, gracenoteShowId)
-        : youtubeTvValues(seriesName, seriesSku, seasonNumber, ep, start, end, gracenoteShowId);
+        ? standardTvValues(seriesName, seriesSku, seasonSku, seasonNumber, ep, gracenoteShowId)
+        : youtubeTvValues(seriesName, seriesSku, seasonNumber, ep, gracenoteShowId);
       rows.push(makeRow(tmpl, values));
     });
 
@@ -277,7 +277,7 @@
     };
   }
 
-  function standardTvValues(seriesName, seriesSku, seasonSku, seasonNumber, episode, start, end, gracenoteShowId) {
+  function standardTvValues(seriesName, seriesSku, seasonSku, seasonNumber, episode, gracenoteShowId) {
     return {
       DisplayName: "pureflix",
       Territory: "US",
@@ -297,8 +297,8 @@
       LicenseType: "SVOD",
       LicenseRightsDescription: "SWP",
       FormatProfile: "HD",
-      Start: start,
-      End: end,
+      Start: episode.startDate,
+      End: episode.endDate,
       PriceType: "Category",
       PriceValue: "Sub",
       Download: "FALSE",
@@ -311,7 +311,7 @@
     };
   }
 
-  function youtubeTvValues(seriesName, seriesSku, seasonNumber, episode, start, end, gracenoteShowId) {
+  function youtubeTvValues(seriesName, seriesSku, seasonNumber, episode, gracenoteShowId) {
     return {
       ALID: episode.episodeSku,
       DisplayName: "pureflix.com",
@@ -326,8 +326,8 @@
       RetailerEpisodeID1: episode.gracenoteEpisodeId,
       RetailerSeriesID: gracenoteShowId,
       LicenseRightsDescription: "Library",
-      Start: amazonDateToIsoStart(start),
-      End: clampYoutubeEnd(amazonDateToIsoEnd(end)),
+      Start: amazonDateToIsoStart(episode.startDate),
+      End: clampYoutubeEnd(amazonDateToIsoEnd(episode.endDate)),
       PackageAssetId: ""
     };
   }
@@ -338,18 +338,20 @@
     return out;
   }
 
-  function normalizeEpisodes(episodes) {
+  function normalizeEpisodes(episodes, fallbackStart, fallbackEnd) {
     const out = episodes
       .map(function normalizeEpisode(ep) {
         return {
           episodeNumber: clean(ep.episodeNumber),
           episodeName: clean(ep.episodeName),
           episodeSku: clean(ep.episodeSku),
-          gracenoteEpisodeId: clean(ep.gracenoteEpisodeId)
+          gracenoteEpisodeId: clean(ep.gracenoteEpisodeId),
+          startDate: coerceToYmd(ep.startDate) || fallbackStart,
+          endDate: coerceToYmd(ep.endDate) || fallbackEnd
         };
       })
       .filter(function keepEpisode(ep) {
-        return ep.episodeNumber || ep.episodeName || ep.episodeSku || ep.gracenoteEpisodeId;
+        return ep.episodeNumber || ep.episodeName || ep.episodeSku || ep.gracenoteEpisodeId || ep.startDate || ep.endDate;
       });
 
     if (!out.length) throw new Error("At least one episode is required.");
@@ -358,6 +360,8 @@
       if (!ep.episodeNumber) throw new Error(rowName + " needs an episode number.");
       if (!ep.episodeName) throw new Error(rowName + " needs an episode name.");
       if (!ep.episodeSku) throw new Error(rowName + " needs an episode SKU.");
+      if (!ep.startDate) throw new Error(rowName + " needs a start date.");
+      if (!ep.endDate) throw new Error(rowName + " needs an end date.");
     });
     return out;
   }
@@ -689,12 +693,227 @@
     return widths;
   }
 
+  function importWhatsOnMatrix(matrix) {
+    const parsed = parseTable(matrix);
+    const movieRows = parsed.rows.filter(function isMovie(row) {
+      const type = normalizedCell(row, ["contentType", "type", "assetType"]);
+      return type === "movie" || type === "program" || (!type && !normalizedCell(row, ["titleSeries", "seriesTitle", "parentSeries"]) && !normalizedCell(row, ["titleEpisode", "episodeTitle"]) && clean(firstCell(row, ["titleVod", "title", "name"])));
+    });
+    const episodeRows = parsed.rows.filter(function isEpisode(row) {
+      const type = normalizedCell(row, ["contentType", "type", "assetType"]);
+      return type === "episode" || clean(firstCell(row, ["episodeAirOrder", "episodeNumber"])) || clean(firstCell(row, ["titleEpisode", "episodeTitle"]));
+    });
+    const seriesRows = parsed.rows.filter(function isSeries(row) {
+      const type = normalizedCell(row, ["contentType", "type", "assetType"]);
+      return type === "parentseries" || (type === "series" && !clean(firstCell(row, ["seasonNumber", "season"])));
+    });
+    const seasonRows = parsed.rows.filter(function isSeason(row) {
+      const type = normalizedCell(row, ["contentType", "type", "assetType"]);
+      return type === "season" || (type === "series" && clean(firstCell(row, ["seasonNumber", "season"])));
+    });
+
+    return {
+      headerRowIndex: parsed.headerRowIndex,
+      movie: movieRows.length ? movieFromWhatsOnRow(movieRows[0]) : null,
+      tv: episodeRows.length ? tvFromWhatsOnRows(episodeRows, seriesRows, seasonRows) : null,
+      counts: {
+        rows: parsed.rows.length,
+        movies: movieRows.length,
+        episodes: episodeRows.length,
+        series: seriesRows.length,
+        seasons: seasonRows.length
+      }
+    };
+  }
+
+  function parseTable(matrix) {
+    const values = normalizeMatrix(matrix);
+    if (!values.length) throw new Error("Upload is empty.");
+    let bestIndex = -1;
+    let bestScore = 0;
+    values.forEach(function scoreRow(row, idx) {
+      const headers = row.map(normalizeKey);
+      let score = 0;
+      ["contenttype", "titlevod", "titleseries", "titleepisode", "idsku", "idskucvp", "vodidsku", "vodseriesidsku", "vodseasonidsku", "parentseries", "title", "season", "episode", "episodenumber", "episodeairorder", "externalreference"].forEach(function scoreHeader(header) {
+        if (headers.indexOf(header) >= 0) score += 1;
+      });
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = idx;
+      }
+    });
+    if (bestIndex < 0 || bestScore < 2) throw new Error("Could not find a WhatsOn-style header row.");
+
+    const header = values[bestIndex].map(normalizeKey);
+    const rows = [];
+    for (let r = bestIndex + 1; r < values.length; r += 1) {
+      const row = values[r] || [];
+      if (isRowBlank(row)) continue;
+      const obj = {};
+      for (let c = 0; c < header.length; c += 1) {
+        if (!header[c]) continue;
+        if (obj[header[c]] === undefined || !clean(obj[header[c]])) obj[header[c]] = valueAt(row, c);
+      }
+      rows.push(obj);
+    }
+    if (!rows.length) throw new Error("Upload has headers but no data rows.");
+    return { headerRowIndex: bestIndex, rows };
+  }
+
+  function movieFromWhatsOnRow(row) {
+    return {
+      title: firstCell(row, ["titleVod", "title", "name", "assetNameSDVI"]),
+      sku: firstCell(row, ["VOD ID SKU CVP", "VOD ID SKU", "idSku_CVP", "idSkuCVP", "idSku", "MPX GUID", "IdGUID", "externalReference", "assetNameSDVI"]),
+      gracenoteId: firstCell(row, ["TMSNumber", "idTMS", "RetailerID1", "gracenoteId"])
+    };
+  }
+
+  function tvFromWhatsOnRows(episodeRows, seriesRows, seasonRows) {
+    const firstEpisode = episodeRows[0] || {};
+    const firstSeriesName = firstCell(firstEpisode, ["titleSeries", "seriesTitle", "parentSeries"]);
+    const firstSeasonNumber = firstCell(firstEpisode, ["seasonNumber", "season"]);
+    const filteredEpisodes = episodeRows.filter(function sameFirstTvGroup(row) {
+      const rowSeriesName = firstCell(row, ["titleSeries", "seriesTitle", "parentSeries"]);
+      const rowSeasonNumber = firstCell(row, ["seasonNumber", "season"]);
+      return (!firstSeriesName || rowSeriesName === firstSeriesName) && (!firstSeasonNumber || rowSeasonNumber === firstSeasonNumber);
+    });
+    const seriesRow = matchingRow(seriesRows, ["titleSeries", "seriesTitle", "parentSeries", "titleVod", "title"], firstSeriesName) || seriesRows[0] || {};
+    const seasonRow = matchingSeasonRow(seasonRows, firstSeriesName, firstSeasonNumber) || seasonRows[0] || {};
+    const seriesName = firstNonBlank([
+      firstCell(firstEpisode, ["titleSeries", "seriesTitle", "parentSeries"]),
+      firstCell(seriesRow, ["titleSeries", "seriesTitle", "parentSeries", "titleVod", "title"])
+    ]);
+    const seasonNumber = firstNonBlank([
+      numberCell(firstEpisode, ["seasonNumber", "season"]),
+      numberCell(seasonRow, ["seasonNumber", "season"])
+    ]);
+    const seriesSku = firstNonBlank([
+      firstCell(firstEpisode, ["vodSeriesId (SKU)_CVP", "vodSeriesId_SKU_CVP", "vodSeriesId (SKU)", "vodSeriesId_SKU"]),
+      firstCell(seriesRow, ["VOD ID SKU CVP", "VOD ID SKU", "idSku_CVP", "idSku", "vodSeriesId (SKU)_CVP", "vodSeriesId (SKU)", "externalReference"])
+    ]);
+    const seasonSku = firstNonBlank([
+      firstCell(firstEpisode, ["vodSeasonId (SKU)_CVP", "vodSeasonId_SKU_CVP", "vodSeasonId (SKU)", "vodSeasonId_SKU"]),
+      firstCell(seasonRow, ["VOD ID SKU CVP", "VOD ID SKU", "idSku_CVP", "idSku", "vodSeasonId (SKU)_CVP", "vodSeasonId (SKU)", "externalReference"])
+    ]);
+    const gracenoteShowId = firstNonBlank([
+      firstCell(firstEpisode, ["idTMS_series", "RetailerSeriesID", "gracenoteShowId"]),
+      showIdFromRow(seriesRow),
+      showIdFromRow(firstEpisode)
+    ]);
+    const episodes = filteredEpisodes.map(function mapEpisode(row) {
+      const idTms = firstCell(row, ["TMSNumber", "idTMS", "RetailerEpisodeID1", "gracenoteEpisodeId"]);
+      return {
+        episodeNumber: numberCell(row, ["episodeAirOrder", "episodeNumber", "episode", "Episode #"]),
+        episodeName: firstCell(row, ["titleEpisode", "episodeTitle", "titleVod", "title"]),
+        episodeSku: episodeSkuFromRow(row, seriesSku, seasonSku),
+        gracenoteEpisodeId: /^EP/i.test(clean(idTms)) ? idTms : ""
+      };
+    }).filter(function validEpisode(ep) {
+      return ep.episodeNumber || ep.episodeName || ep.episodeSku || ep.gracenoteEpisodeId;
+    }).sort(compareEpisodes);
+
+    return {
+      seriesName,
+      seasonNumber,
+      seriesSku,
+      seasonSku,
+      gracenoteShowId,
+      episodes
+    };
+  }
+
+  function matchingRow(rows, aliases, expected) {
+    const expectedValue = clean(expected);
+    if (!expectedValue) return null;
+    return rows.find(function findRow(row) {
+      return firstCell(row, aliases) === expectedValue;
+    }) || null;
+  }
+
+  function matchingSeasonRow(rows, seriesName, seasonNumber) {
+    return rows.find(function findSeason(row) {
+      const rowSeriesName = firstCell(row, ["titleSeries", "seriesTitle", "parentSeries"]);
+      const rowSeasonNumber = numberCell(row, ["seasonNumber", "season"]);
+      return (!clean(seriesName) || rowSeriesName === seriesName) && (!clean(seasonNumber) || rowSeasonNumber === seasonNumber);
+    }) || null;
+  }
+
+  function episodeSkuFromRow(row, seriesSku, seasonSku) {
+    const candidates = [
+      { value: firstCell(row, ["VOD ID SKU CVP", "VOD ID SKU"]), strictEpisode: false },
+      { value: firstCell(row, ["idSku_CVP", "idSkuCVP"]), strictEpisode: false },
+      { value: firstCell(row, ["idSku"]), strictEpisode: false },
+      { value: firstCell(row, ["MPX GUID", "IdGUID"]), strictEpisode: true },
+      { value: firstCell(row, ["assetNameSDVI"]), strictEpisode: true }
+    ];
+    for (let i = 0; i < candidates.length; i += 1) {
+      const value = clean(candidates[i].value);
+      if (/^\d+$/.test(value)) continue;
+      if (candidates[i].strictEpisode && !looksEpisodeSpecific(value)) continue;
+      if (value && value !== clean(seriesSku) && value !== clean(seasonSku)) return value;
+    }
+    return "";
+  }
+
+  function looksEpisodeSpecific(value) {
+    const text = clean(value);
+    return /(?:^|[_-])s?\d+[_-]?e\d+(?:[_-]|$)/i.test(text) || /(?:^|[_-])e\d+(?:[_-]|$)/i.test(text) || /^EP/i.test(text);
+  }
+
+  function showIdFromRow(row) {
+    const id = firstCell(row, ["TMSNumber", "idTMS", "RetailerSeriesID", "gracenoteShowId"]);
+    return /^SH/i.test(clean(id)) ? id : "";
+  }
+
+  function compareEpisodes(a, b) {
+    const aNum = Number(clean(a.episodeNumber));
+    const bNum = Number(clean(b.episodeNumber));
+    if (!Number.isNaN(aNum) && !Number.isNaN(bNum) && aNum !== bNum) return aNum - bNum;
+    return clean(a.episodeNumber).localeCompare(clean(b.episodeNumber), undefined, { numeric: true });
+  }
+
+  function firstCell(row, names) {
+    for (let i = 0; i < names.length; i += 1) {
+      const key = normalizeKey(names[i]);
+      if (row[key] === undefined) continue;
+      const value = cleanCellValue(row[key]);
+      if (value) return value;
+    }
+    return "";
+  }
+
+  function numberCell(row, names) {
+    const value = firstCell(row, names);
+    return value.replace(/^(\d+)\.0$/, "$1");
+  }
+
+  function normalizedCell(row, names) {
+    return normalizeKey(firstCell(row, names));
+  }
+
+  function firstNonBlank(values) {
+    for (let i = 0; i < values.length; i += 1) {
+      const value = clean(values[i]);
+      if (value) return value;
+    }
+    return "";
+  }
+
+  function normalizeKey(value) {
+    return clean(value).toLowerCase().replace(/[^a-z0-9]+/g, "");
+  }
+
+  function cleanCellValue(value) {
+    return clean(value).replace(/^(\d+)\.0$/, "$1");
+  }
+
   return {
     VERSION,
     VERSION_LABEL,
     buildMovieSheet,
     buildTvSheet,
     convertMatrix,
+    importWhatsOnMatrix,
     inspectMatrix,
     suggestColumnWidths,
     amazonDateToIsoStart,

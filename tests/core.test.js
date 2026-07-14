@@ -89,6 +89,36 @@ function testTvStandardAndYouTube() {
   assert.equal(cell(youtube, "End"), "2036-01-03T04:59:59Z");
 }
 
+function testTvEpisodeDatesOverrideSeriesDates() {
+  const sheet = Core.buildTvSheet({
+    seriesName: "Series",
+    seriesSku: "SERIES_SKU",
+    seasonSku: "SEASON_SKU",
+    seasonNumber: "1",
+    startDate: "2026-01-01",
+    endDate: "2026-12-31",
+    episodes: [
+      {
+        episodeNumber: "1",
+        episodeName: "One",
+        episodeSku: "EP_1",
+        startDate: "2026-02-01",
+        endDate: "2026-02-28"
+      },
+      {
+        episodeNumber: "2",
+        episodeName: "Two",
+        episodeSku: "EP_2"
+      }
+    ]
+  }, "standard");
+
+  assert.equal(cell(sheet, "Start", 3), "2026-02-01");
+  assert.equal(cell(sheet, "End", 3), "2026-02-28");
+  assert.equal(cell(sheet, "Start", 4), "2026-01-01");
+  assert.equal(cell(sheet, "End", 4), "2026-12-31");
+}
+
 function testStandardToYouTubeConversion() {
   const standard = Core.buildMovieSheet({
     title: "Conversion Movie",
@@ -140,10 +170,81 @@ function testYouTubeToStandardConversion() {
   assert.equal(cell(converted, "End"), "2030-06-30");
 }
 
+function testWhatsOnMovieImport() {
+  const imported = Core.importWhatsOnMatrix([
+    ["assetNameSDVI", "contentType", "titleVod", "idSku", "idSku_CVP", "idTMS"],
+    ["MrMnhtn", "movie", "Mr. Manhattan", "c2fa3598", "M_2337230403862_529919526542", "MV022099620000"]
+  ]);
+
+  assert.equal(imported.counts.movies, 1);
+  assert.equal(imported.movie.title, "Mr. Manhattan");
+  assert.equal(imported.movie.sku, "M_2337230403862_529919526542");
+  assert.equal(imported.movie.gracenoteId, "MV022099620000");
+}
+
+function testNativeWhatsOnProgramImport() {
+  const imported = Core.importWhatsOnMatrix([
+    ["External reference", "Content type", "VOD ID SKU", "Parent series", "Title", "Season", "Episode #", "TMSNumber"],
+    ["MvieRef", "Program", "MOVIE-SKU-1", "", "Native WhatsOn Movie", "", "", "MV000000000001"]
+  ]);
+
+  assert.equal(imported.counts.movies, 1);
+  assert.equal(imported.movie.title, "Native WhatsOn Movie");
+  assert.equal(imported.movie.sku, "MOVIE-SKU-1");
+  assert.equal(imported.movie.gracenoteId, "MV000000000001");
+}
+
+function testWhatsOnTvImport() {
+  const imported = Core.importWhatsOnMatrix([
+    ["assetNameSDVI", "contentType", "titleVod", "titleSeries", "titleEpisode", "seasonNumber", "episodeAirOrder", "idSku", "idSku_CVP", "vodSeriesId (SKU)", "vodSeriesId (SKU)_CVP", "vodSeasonId (SKU)", "vodSeasonId (SKU)_CVP", "idTMS", "idTMS_series"],
+    ["CntyRsc", "series", "County Rescue (Series Placeholder)", "County Rescue", "", "", "", "2310526531722", "S_2310526531722_527488038522", "2310526531722", "S_2310526531722_527488038522", "", "", "SH050305430000", ""],
+    ["CntyRsc", "season", "County Rescue Season 3 (Season Placeholder)", "County Rescue", "", "3", "", "2310526531722", "S3_2481343043694_545645606695", "", "", "2310526531722", "S3_2481343043694_545645606695", "", ""],
+    ["CntyRscS03E02", "episode", "Second Episode", "County Rescue", "Second Episode", "3", "2", "2", "S3_E02_SKU", "", "S_2310526531722_527488038522", "", "S3_2481343043694_545645606695", "EP050305430002", "SH050305430000"],
+    ["CntyRscS03E01", "episode", "Leave the Light On", "County Rescue", "Leave the Light On", "3", "1", "1", "S3_E01_SKU", "", "S_2310526531722_527488038522", "", "S3_2481343043694_545645606695", "EP050305430001", "SH050305430000"]
+  ]);
+
+  assert.equal(imported.counts.episodes, 2);
+  assert.equal(imported.tv.seriesName, "County Rescue");
+  assert.equal(imported.tv.seasonNumber, "3");
+  assert.equal(imported.tv.seriesSku, "S_2310526531722_527488038522");
+  assert.equal(imported.tv.seasonSku, "S3_2481343043694_545645606695");
+  assert.equal(imported.tv.gracenoteShowId, "SH050305430000");
+  assert.equal(imported.tv.episodes[0].episodeNumber, "1");
+  assert.equal(imported.tv.episodes[0].episodeName, "Leave the Light On");
+  assert.equal(imported.tv.episodes[0].episodeSku, "S3_E01_SKU");
+  assert.equal(imported.tv.episodes[0].gracenoteEpisodeId, "EP050305430001");
+}
+
+function testNativeWhatsOnTvImport() {
+  const imported = Core.importWhatsOnMatrix([
+    ["External reference", "Type", "Content type", "VOD ID SKU", "Parent series", "Title", "Season", "Episode #", "Media assets", "VOD ID SKU CVP", "MPX GUID", "TMSNumber"],
+    ["CrtdFrHR", "Owned", "Parent series", "bb38ee54-5029-562e-b19b-e7ef830c0dbd", "", "Curated for H.E.R.", "", "", "", "", "", "SH123"],
+    ["CrtdFrHRS01", "Owned", "Series", "", "Curated for H.E.R.", "Curated for H.E.R. Day 1", "1.0", "", "", "", "", ""],
+    ["CrtdFrHRS01E01", "Owned", "Episode", "1a926faa-5cfa-5b55-bd75-31d23ce80658", "Curated for H.E.R.", "Erica Kirk", "1.0", "101.0", "PUR0004942", "", "", "EP123"],
+    ["CrtdFrHRS01E02", "Owned", "Episode", "3e0d21c7-f19d-510b-a6f1-0726d1a9d2df", "Curated for H.E.R.", "Karen Duddlesten", "1.0", "102.0", "PUR0004943", "", "", ""]
+  ]);
+
+  assert.equal(imported.counts.episodes, 2);
+  assert.equal(imported.tv.seriesName, "Curated for H.E.R.");
+  assert.equal(imported.tv.seriesSku, "bb38ee54-5029-562e-b19b-e7ef830c0dbd");
+  assert.equal(imported.tv.seasonSku, "CrtdFrHRS01");
+  assert.equal(imported.tv.seasonNumber, "1");
+  assert.equal(imported.tv.gracenoteShowId, "SH123");
+  assert.equal(imported.tv.episodes[0].episodeNumber, "101");
+  assert.equal(imported.tv.episodes[0].episodeName, "Erica Kirk");
+  assert.equal(imported.tv.episodes[0].episodeSku, "1a926faa-5cfa-5b55-bd75-31d23ce80658");
+  assert.equal(imported.tv.episodes[0].gracenoteEpisodeId, "EP123");
+}
+
 testMovieStandard();
 testMovieYouTube();
 testTvStandardAndYouTube();
+testTvEpisodeDatesOverrideSeriesDates();
 testStandardToYouTubeConversion();
 testYouTubeToStandardConversion();
+testWhatsOnMovieImport();
+testNativeWhatsOnProgramImport();
+testWhatsOnTvImport();
+testNativeWhatsOnTvImport();
 
 console.log("core tests passed");
