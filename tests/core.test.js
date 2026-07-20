@@ -119,6 +119,53 @@ function testTvEpisodeDatesOverrideSeriesDates() {
   assert.equal(cell(sheet, "End", 4), "2026-12-31");
 }
 
+function testTvMultiSeasonRows() {
+  const sheet = Core.buildTvSheet({
+    seriesName: "Series",
+    seriesSku: "SERIES_SKU",
+    seasonSku: "SEASON_1",
+    seasonNumber: "1",
+    startDate: "2026-01-01",
+    endDate: "2026-12-31",
+    episodes: [
+      {
+        seasonNumber: "1",
+        seasonSku: "SEASON_1",
+        episodeNumber: "1",
+        episodeName: "Season One",
+        episodeSku: "S1_EP1"
+      },
+      {
+        seasonNumber: "2",
+        seasonSku: "SEASON_2",
+        episodeNumber: "25",
+        episodeName: "Season Two",
+        episodeSku: "S2_EP25"
+      }
+    ]
+  }, "standard");
+
+  assert.equal(cell(sheet, "SeasonNumber", 3), "1");
+  assert.equal(cell(sheet, "SeasonAltID", 3), "SEASON_1");
+  assert.equal(cell(sheet, "EpisodeNumber", 3), "1");
+  assert.equal(cell(sheet, "SeasonNumber", 4), "2");
+  assert.equal(cell(sheet, "SeasonAltID", 4), "SEASON_2");
+  assert.equal(cell(sheet, "EpisodeNumber", 4), "25");
+}
+
+function testPastedDateFormats() {
+  const sheet = Core.buildMovieSheet({
+    title: "Paste Date Movie",
+    sku: "M_DATE",
+    startDate: "6/10/2029",
+    endDate: "June 10, 2029"
+  }, "standard");
+
+  assert.equal(cell(sheet, "Start"), "2029-06-10");
+  assert.equal(cell(sheet, "End"), "2029-06-10");
+  assert.equal(Core.coerceToYmd("2029-6-10"), "2029-06-10");
+}
+
 function testStandardToYouTubeConversion() {
   const standard = Core.buildMovieSheet({
     title: "Conversion Movie",
@@ -219,27 +266,36 @@ function testNativeWhatsOnTvImport() {
   const imported = Core.importWhatsOnMatrix([
     ["External reference", "Type", "Content type", "VOD ID SKU", "Parent series", "Title", "Season", "Episode #", "Media assets", "VOD ID SKU CVP", "MPX GUID", "TMSNumber"],
     ["CrtdFrHR", "Owned", "Parent series", "bb38ee54-5029-562e-b19b-e7ef830c0dbd", "", "Curated for H.E.R.", "", "", "", "", "", "SH123"],
-    ["CrtdFrHRS01", "Owned", "Series", "", "Curated for H.E.R.", "Curated for H.E.R. Day 1", "1.0", "", "", "", "", ""],
+    ["CrtdFrHRS01", "Owned", "Series", "f33971b2-5cea-5584-8755-3f0d7c28c01d", "Curated for H.E.R.", "Curated for H.E.R. Day 1", "1.0", "", "", "", "", ""],
     ["CrtdFrHRS01E01", "Owned", "Episode", "1a926faa-5cfa-5b55-bd75-31d23ce80658", "Curated for H.E.R.", "Erica Kirk", "1.0", "101.0", "PUR0004942", "", "", "EP123"],
-    ["CrtdFrHRS01E02", "Owned", "Episode", "3e0d21c7-f19d-510b-a6f1-0726d1a9d2df", "Curated for H.E.R.", "Karen Duddlesten", "1.0", "102.0", "PUR0004943", "", "", ""]
+    ["CrtdFrHRS01E02", "Owned", "Episode", "3e0d21c7-f19d-510b-a6f1-0726d1a9d2df", "Curated for H.E.R.", "Karen Duddlesten", "1.0", "102.0", "PUR0004943", "", "", ""],
+    ["CrtdFrHRS02", "Owned", "Series", "4dda940e-5433-5169-bb3f-c8841ba492ed", "Curated for H.E.R.", "Curated for H.E.R. Day 2", "2.0", "", "", "", "", ""],
+    ["CrtdFrHRS02E25", "Owned", "Episode", "S2_EP25_SKU", "Curated for H.E.R.", "Episode Twenty Five", "2.0", "225.0", "PUR0004999", "", "", ""]
   ]);
 
-  assert.equal(imported.counts.episodes, 2);
+  assert.equal(imported.counts.episodes, 3);
+  assert.equal(imported.tvSeasons.length, 2);
   assert.equal(imported.tv.seriesName, "Curated for H.E.R.");
   assert.equal(imported.tv.seriesSku, "bb38ee54-5029-562e-b19b-e7ef830c0dbd");
-  assert.equal(imported.tv.seasonSku, "CrtdFrHRS01");
+  assert.equal(imported.tv.seasonSku, "f33971b2-5cea-5584-8755-3f0d7c28c01d");
   assert.equal(imported.tv.seasonNumber, "1");
   assert.equal(imported.tv.gracenoteShowId, "SH123");
-  assert.equal(imported.tv.episodes[0].episodeNumber, "101");
+  assert.equal(imported.tv.episodes[0].seasonSku, "f33971b2-5cea-5584-8755-3f0d7c28c01d");
+  assert.equal(imported.tv.episodes[0].episodeNumber, "1");
   assert.equal(imported.tv.episodes[0].episodeName, "Erica Kirk");
   assert.equal(imported.tv.episodes[0].episodeSku, "1a926faa-5cfa-5b55-bd75-31d23ce80658");
   assert.equal(imported.tv.episodes[0].gracenoteEpisodeId, "EP123");
+  assert.equal(imported.tvSeasons[1].seasonNumber, "2");
+  assert.equal(imported.tvSeasons[1].seasonSku, "4dda940e-5433-5169-bb3f-c8841ba492ed");
+  assert.equal(imported.tvSeasons[1].episodes[0].episodeNumber, "25");
 }
 
 testMovieStandard();
 testMovieYouTube();
 testTvStandardAndYouTube();
 testTvEpisodeDatesOverrideSeriesDates();
+testTvMultiSeasonRows();
+testPastedDateFormats();
 testStandardToYouTubeConversion();
 testYouTubeToStandardConversion();
 testWhatsOnMovieImport();

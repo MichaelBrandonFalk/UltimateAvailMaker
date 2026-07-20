@@ -10,10 +10,10 @@
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.1</span></p>
+          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.2</span></p>
           <h1>Avails</h1>
         </div>
-        <a class="download-link" href="downloads/Ultimate Avail Maker V1_1.zip" download>Download V1.1</a>
+        <a class="download-link" href="downloads/Ultimate Avail Maker V1_2.zip" download>Download V1.2</a>
       </header>
 
       <main class="workspace">
@@ -41,11 +41,11 @@
             </label>
             <label class="field" for="movie-start">
               <span>Start Date</span>
-              <input id="movie-start" name="startDate" type="date" required>
+              <input id="movie-start" name="startDate" data-date-input placeholder="yyyy-mm-dd" required>
             </label>
             <label class="field" for="movie-end">
               <span>End Date</span>
-              <input id="movie-end" name="endDate" type="date" required>
+              <input id="movie-end" name="endDate" data-date-input placeholder="yyyy-mm-dd" required>
             </label>
             <label class="field" for="movie-gracenote">
               <span>Gracenote ID</span>
@@ -92,11 +92,11 @@
             </label>
             <label class="field" for="tv-start">
               <span>Start Date</span>
-              <input id="tv-start" name="startDate" type="date">
+              <input id="tv-start" name="startDate" data-date-input placeholder="yyyy-mm-dd">
             </label>
             <label class="field" for="tv-end">
               <span>End Date</span>
-              <input id="tv-end" name="endDate" type="date">
+              <input id="tv-end" name="endDate" data-date-input placeholder="yyyy-mm-dd">
             </label>
             <label class="field" for="show-gracenote">
               <span>Gracenote Show ID</span>
@@ -119,6 +119,8 @@
               <table class="input-table" id="episode-table">
                 <thead>
                   <tr>
+                    <th>Season #</th>
+                    <th>Season SKU</th>
                     <th>Episode #</th>
                     <th>Episode Name</th>
                     <th>Episode SKU</th>

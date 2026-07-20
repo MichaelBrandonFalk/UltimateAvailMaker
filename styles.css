@@ -286,11 +286,16 @@ textarea:focus {
   min-height: 110px;
 }
 
-.preview-grid table,
-.input-table {
+.preview-grid table {
   border-collapse: collapse;
   width: 100%;
   min-width: 1040px;
+}
+
+.input-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 1320px;
 }
 
 .preview-grid th,

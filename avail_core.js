@@ -7,8 +7,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function buildApi() {
   "use strict";
 
-  const VERSION = "V1_1";
-  const VERSION_LABEL = "V1.1";
+  const VERSION = "V1_2";
+  const VERSION_LABEL = "V1.2";
   const NY_TZ = "America/New_York";
   const YT_END_MAX_YMD = "2036-01-02";
 
@@ -212,19 +212,19 @@
     const targetKey = canonicalTarget(target);
     const seriesName = required(input.seriesName, "Series name");
     const seriesSku = required(input.seriesSku, "Series SKU");
-    const seasonSku = required(input.seasonSku, "Season SKU");
-    const seasonNumber = required(input.seasonNumber, "Season number");
+    const fallbackSeasonSku = clean(input.seasonSku);
+    const fallbackSeasonNumber = clean(input.seasonNumber);
     const start = coerceToYmd(input.startDate);
     const end = coerceToYmd(input.endDate);
     const gracenoteShowId = clean(input.gracenoteShowId);
-    const episodes = normalizeEpisodes(input.episodes || [], start, end);
+    const episodes = normalizeEpisodes(input.episodes || [], start, end, fallbackSeasonNumber, fallbackSeasonSku);
     const tmpl = getTemplate(targetKey, "Episode");
     const rows = headersFor(tmpl);
 
     episodes.forEach(function addEpisode(ep) {
       const values = targetKey === "standard"
-        ? standardTvValues(seriesName, seriesSku, seasonSku, seasonNumber, ep, gracenoteShowId)
-        : youtubeTvValues(seriesName, seriesSku, seasonNumber, ep, gracenoteShowId);
+        ? standardTvValues(seriesName, seriesSku, ep, gracenoteShowId)
+        : youtubeTvValues(seriesName, seriesSku, ep, gracenoteShowId);
       rows.push(makeRow(tmpl, values));
     });
 
@@ -277,7 +277,7 @@
     };
   }
 
-  function standardTvValues(seriesName, seriesSku, seasonSku, seasonNumber, episode, gracenoteShowId) {
+  function standardTvValues(seriesName, seriesSku, episode, gracenoteShowId) {
     return {
       DisplayName: "pureflix",
       Territory: "US",
@@ -285,12 +285,12 @@
       EntryType: "Full Extract",
       SeriesTitleInternalAlias: seriesName,
       SeriesTitleDisplayUnlimited: seriesName,
-      SeasonNumber: seasonNumber,
+      SeasonNumber: episode.seasonNumber,
       EpisodeNumber: episode.episodeNumber,
       EpisodeTitleInternalAlias: episode.episodeName,
       EpisodeTitleDisplayUnlimited: episode.episodeName,
       SeriesAltID: seriesSku,
-      SeasonAltID: seasonSku,
+      SeasonAltID: episode.seasonSku,
       EpisodeAltID: episode.episodeSku,
       ALID: episode.episodeSku,
       GroupIdentity: "pureflixus1",
@@ -303,7 +303,7 @@
       PriceValue: "Sub",
       Download: "FALSE",
       SeriesContentID: seriesSku,
-      SeasonContentID: seasonSku,
+      SeasonContentID: episode.seasonSku,
       EpisodeContentID: episode.episodeSku,
       CaptionIncluded: "Yes",
       RetailerEpisodeID1: episode.gracenoteEpisodeId,
@@ -311,7 +311,7 @@
     };
   }
 
-  function youtubeTvValues(seriesName, seriesSku, seasonNumber, episode, gracenoteShowId) {
+  function youtubeTvValues(seriesName, seriesSku, episode, gracenoteShowId) {
     return {
       ALID: episode.episodeSku,
       DisplayName: "pureflix.com",
@@ -319,7 +319,7 @@
       WorkType: "Episode",
       EntryType: "Full Extract",
       SeriesTitleInternalAlias: seriesName,
-      SeasonNumber: seasonNumber,
+      SeasonNumber: episode.seasonNumber,
       EpisodeNumber: episode.episodeNumber,
       EpisodeTitleInternalAlias: episode.episodeName,
       SeriesID: seriesSku,
@@ -338,10 +338,12 @@
     return out;
   }
 
-  function normalizeEpisodes(episodes, fallbackStart, fallbackEnd) {
+  function normalizeEpisodes(episodes, fallbackStart, fallbackEnd, fallbackSeasonNumber, fallbackSeasonSku) {
     const out = episodes
       .map(function normalizeEpisode(ep) {
         return {
+          seasonNumber: clean(ep.seasonNumber) || fallbackSeasonNumber,
+          seasonSku: clean(ep.seasonSku) || fallbackSeasonSku,
           episodeNumber: clean(ep.episodeNumber),
           episodeName: clean(ep.episodeName),
           episodeSku: clean(ep.episodeSku),
@@ -357,6 +359,8 @@
     if (!out.length) throw new Error("At least one episode is required.");
     out.forEach(function validateEpisode(ep, idx) {
       const rowName = "Episode row " + (idx + 1);
+      if (!ep.seasonNumber) throw new Error(rowName + " needs a season number.");
+      if (!ep.seasonSku) throw new Error(rowName + " needs a season SKU.");
       if (!ep.episodeNumber) throw new Error(rowName + " needs an episode number.");
       if (!ep.episodeName) throw new Error(rowName + " needs an episode name.");
       if (!ep.episodeSku) throw new Error(rowName + " needs an episode SKU.");
@@ -376,11 +380,35 @@
     if (value instanceof Date && !Number.isNaN(value.getTime())) return formatYmdInTimeZone(value, NY_TZ);
     const s = clean(value);
     if (!s) return "";
-    const ymdMatch = s.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (ymdMatch) return ymdMatch[1];
+    const ymdMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (ymdMatch) return ymdFromParts(ymdMatch[1], ymdMatch[2], ymdMatch[3]);
+    const mdyMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+    if (mdyMatch) return ymdFromParts(mdyMatch[3], mdyMatch[1], mdyMatch[2]);
+    const writtenMatch = s.match(/^([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?[,]?\s+(\d{4})$/i);
+    if (writtenMatch) {
+      const month = monthNumber(writtenMatch[1]);
+      if (month) return ymdFromParts(writtenMatch[3], month, writtenMatch[2]);
+    }
     const parsed = new Date(s);
     if (!Number.isNaN(parsed.getTime())) return formatYmdInTimeZone(parsed, NY_TZ);
     return "";
+  }
+
+  function ymdFromParts(yearValue, monthValue, dayValue) {
+    const year = Number(yearValue);
+    const month = Number(monthValue);
+    const day = Number(dayValue);
+    if (!year || month < 1 || month > 12 || day < 1 || day > 31) return "";
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return "";
+    return String(year).padStart(4, "0") + "-" + String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+  }
+
+  function monthNumber(value) {
+    const key = clean(value).toLowerCase().slice(0, 3);
+    const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+    const index = months.indexOf(key);
+    return index >= 0 ? index + 1 : 0;
   }
 
   function amazonDateToIsoStart(value) {
@@ -712,10 +740,13 @@
       return type === "season" || (type === "series" && clean(firstCell(row, ["seasonNumber", "season"])));
     });
 
+    const tvSeasons = episodeRows.length ? tvSeasonsFromWhatsOnRows(episodeRows, seriesRows, seasonRows) : [];
+
     return {
       headerRowIndex: parsed.headerRowIndex,
       movie: movieRows.length ? movieFromWhatsOnRow(movieRows[0]) : null,
-      tv: episodeRows.length ? tvFromWhatsOnRows(episodeRows, seriesRows, seasonRows) : null,
+      tv: tvSeasons[0] || null,
+      tvSeasons,
       counts: {
         rows: parsed.rows.length,
         movies: movieRows.length,
@@ -768,15 +799,34 @@
     };
   }
 
+  function tvSeasonsFromWhatsOnRows(episodeRows, seriesRows, seasonRows) {
+    const groups = [];
+    episodeRows.forEach(function addToGroup(row) {
+      const rowSeriesName = firstCell(row, ["titleSeries", "seriesTitle", "parentSeries"]);
+      const rowSeasonNumber = numberCell(row, ["seasonNumber", "season"]);
+      let group = groups.find(function findGroup(candidate) {
+        return candidate.seriesName === rowSeriesName && candidate.seasonNumber === rowSeasonNumber;
+      });
+      if (!group) {
+        group = { seriesName: rowSeriesName, seasonNumber: rowSeasonNumber, rows: [] };
+        groups.push(group);
+      }
+      group.rows.push(row);
+    });
+
+    return groups.map(function buildSeason(group) {
+      return tvSeasonFromWhatsOnRows(group.rows, seriesRows, seasonRows);
+    }).filter(Boolean);
+  }
+
   function tvFromWhatsOnRows(episodeRows, seriesRows, seasonRows) {
+    return tvSeasonsFromWhatsOnRows(episodeRows, seriesRows, seasonRows)[0] || null;
+  }
+
+  function tvSeasonFromWhatsOnRows(episodeRows, seriesRows, seasonRows) {
     const firstEpisode = episodeRows[0] || {};
     const firstSeriesName = firstCell(firstEpisode, ["titleSeries", "seriesTitle", "parentSeries"]);
-    const firstSeasonNumber = firstCell(firstEpisode, ["seasonNumber", "season"]);
-    const filteredEpisodes = episodeRows.filter(function sameFirstTvGroup(row) {
-      const rowSeriesName = firstCell(row, ["titleSeries", "seriesTitle", "parentSeries"]);
-      const rowSeasonNumber = firstCell(row, ["seasonNumber", "season"]);
-      return (!firstSeriesName || rowSeriesName === firstSeriesName) && (!firstSeasonNumber || rowSeasonNumber === firstSeasonNumber);
-    });
+    const firstSeasonNumber = numberCell(firstEpisode, ["seasonNumber", "season"]);
     const seriesRow = matchingRow(seriesRows, ["titleSeries", "seriesTitle", "parentSeries", "titleVod", "title"], firstSeriesName) || seriesRows[0] || {};
     const seasonRow = matchingSeasonRow(seasonRows, firstSeriesName, firstSeasonNumber) || seasonRows[0] || {};
     const seriesName = firstNonBlank([
@@ -791,19 +841,18 @@
       firstCell(firstEpisode, ["vodSeriesId (SKU)_CVP", "vodSeriesId_SKU_CVP", "vodSeriesId (SKU)", "vodSeriesId_SKU"]),
       firstCell(seriesRow, ["VOD ID SKU CVP", "VOD ID SKU", "idSku_CVP", "idSku", "vodSeriesId (SKU)_CVP", "vodSeriesId (SKU)", "externalReference"])
     ]);
-    const seasonSku = firstNonBlank([
-      firstCell(firstEpisode, ["vodSeasonId (SKU)_CVP", "vodSeasonId_SKU_CVP", "vodSeasonId (SKU)", "vodSeasonId_SKU"]),
-      firstCell(seasonRow, ["VOD ID SKU CVP", "VOD ID SKU", "idSku_CVP", "idSku", "vodSeasonId (SKU)_CVP", "vodSeasonId (SKU)", "externalReference"])
-    ]);
+    const seasonSku = seasonSkuFromRows(firstEpisode, seasonRow);
     const gracenoteShowId = firstNonBlank([
       firstCell(firstEpisode, ["idTMS_series", "RetailerSeriesID", "gracenoteShowId"]),
       showIdFromRow(seriesRow),
       showIdFromRow(firstEpisode)
     ]);
-    const episodes = filteredEpisodes.map(function mapEpisode(row) {
+    const episodes = episodeRows.map(function mapEpisode(row) {
       const idTms = firstCell(row, ["TMSNumber", "idTMS", "RetailerEpisodeID1", "gracenoteEpisodeId"]);
       return {
-        episodeNumber: numberCell(row, ["episodeAirOrder", "episodeNumber", "episode", "Episode #"]),
+        seasonNumber,
+        seasonSku,
+        episodeNumber: episodeNumberFromWhatsOnRow(row, seasonNumber),
         episodeName: firstCell(row, ["titleEpisode", "episodeTitle", "titleVod", "title"]),
         episodeSku: episodeSkuFromRow(row, seriesSku, seasonSku),
         gracenoteEpisodeId: /^EP/i.test(clean(idTms)) ? idTms : ""
@@ -820,6 +869,27 @@
       gracenoteShowId,
       episodes
     };
+  }
+
+  function seasonSkuFromRows(firstEpisode, seasonRow) {
+    return firstNonBlank([
+      firstCell(seasonRow, ["VOD ID SKU CVP", "VOD ID SKU", "idSku_CVP", "idSku", "vodSeasonId (SKU)_CVP", "vodSeasonId_SKU_CVP", "vodSeasonId (SKU)", "vodSeasonId_SKU"]),
+      firstCell(firstEpisode, ["vodSeasonId (SKU)_CVP", "vodSeasonId_SKU_CVP", "vodSeasonId (SKU)", "vodSeasonId_SKU"]),
+      firstCell(seasonRow, ["externalReference"])
+    ]);
+  }
+
+  function episodeNumberFromWhatsOnRow(row, seasonNumber) {
+    const raw = numberCell(row, ["episodeAirOrder", "episodeNumber", "episode", "Episode #"]);
+    const rawNumber = Number(raw);
+    const season = Number(seasonNumber);
+    if (Number.isInteger(rawNumber) && Number.isInteger(season) && season > 0) {
+      const seasonBase = season * 100;
+      if (rawNumber > seasonBase && rawNumber < seasonBase + 100) {
+        return String(rawNumber - seasonBase);
+      }
+    }
+    return raw;
   }
 
   function matchingRow(rows, aliases, expected) {
@@ -919,6 +989,7 @@
     amazonDateToIsoStart,
     amazonDateToIsoEnd,
     isoToAmazonDate,
+    coerceToYmd,
     clampYoutubeEnd,
     templates: TEMPLATES
   };

@@ -17,6 +17,7 @@
   document.addEventListener("DOMContentLoaded", function init() {
     $('[data-version]').textContent = Core.VERSION_LABEL;
     wireTabs();
+    wireDateInputs();
     wireMovie();
     wireTv();
     wireConversion();
@@ -44,6 +45,23 @@
         $("#" + key + "-preview").replaceChildren();
         setStatus(key, "");
       });
+    });
+  }
+
+  function wireDateInputs() {
+    document.addEventListener("blur", function normalizeOnBlur(event) {
+      if (isDateInput(event.target)) normalizeDateInput(event.target);
+    }, true);
+
+    document.addEventListener("change", function normalizeOnChange(event) {
+      if (isDateInput(event.target)) normalizeDateInput(event.target);
+    });
+
+    document.addEventListener("paste", function normalizeOnPaste(event) {
+      if (!isDateInput(event.target)) return;
+      setTimeout(function normalizeAfterPaste() {
+        normalizeDateInput(event.target);
+      }, 0);
     });
   }
 
@@ -89,13 +107,21 @@
       try {
         const imported = await importWhatsOnFile(file);
         if (!imported.tv) throw new Error("No episode rows found in upload.");
-        fillForm($("#tv-form"), imported.tv);
+        const seasons = imported.tvSeasons && imported.tvSeasons.length ? imported.tvSeasons : [imported.tv];
+        fillForm($("#tv-form"), seasons[0]);
         $("#episode-body").replaceChildren();
-        imported.tv.episodes.forEach(function addImportedEpisode(episode) {
-          addEpisodeRow(episode);
+        let episodeCount = 0;
+        seasons.forEach(function addImportedSeason(season) {
+          season.episodes.forEach(function addImportedEpisode(episode) {
+            episodeCount += 1;
+            addEpisodeRow(Object.assign({}, episode, {
+              seasonNumber: episode.seasonNumber || season.seasonNumber,
+              seasonSku: episode.seasonSku || season.seasonSku
+            }));
+          });
         });
         if (!$("#episode-body").children.length) addEpisodeRow();
-        setStatus("tv", "Loaded " + file.name + ": " + imported.tv.episodes.length + " episode row(s) in the first series/season group. Review fields and add dates before exporting.", "ok");
+        setStatus("tv", "Loaded " + file.name + ": " + seasons.length + " season(s), " + episodeCount + " episode row(s). Review fields and add dates before exporting.", "ok");
       } catch (err) {
         setStatus("tv", err.message || String(err), "error");
       }
@@ -119,8 +145,18 @@
       $("#episode-body").replaceChildren();
       rows.forEach(function addParsedRow(row) {
         const first = row[0] && String(row[0]).trim().toLowerCase();
-        if (first === "episode #" || first === "episode number" || first === "episodenumber") return;
-        addEpisodeRow({
+        if (first === "season #" || first === "season number" || first === "seasonnumber" || first === "episode #" || first === "episode number" || first === "episodenumber") return;
+        const hasSeasonColumns = row.length >= 8;
+        addEpisodeRow(hasSeasonColumns ? {
+          seasonNumber: row[0] || "",
+          seasonSku: row[1] || "",
+          episodeNumber: row[2] || "",
+          episodeName: row[3] || "",
+          episodeSku: row[4] || "",
+          gracenoteEpisodeId: row[5] || "",
+          startDate: row[6] || "",
+          endDate: row[7] || ""
+        } : {
           episodeNumber: row[0] || "",
           episodeName: row[1] || "",
           episodeSku: row[2] || "",
@@ -193,7 +229,8 @@
 
     $("#convert-download").addEventListener("click", function downloadConverted() {
       if (!convertedSheet) return;
-      const filename = fileName(convertedSheet.target, convertedSheet.workType === "Movie" ? "Movie" : "TV", "Converted");
+      const filenameTitle = titleFromSheet(convertedSheet) || "Converted";
+      const filename = fileName(convertedSheet.target, convertedSheet.workType === "Movie" ? "Movie" : "TV", filenameTitle);
       downloadWorkbook([convertedSheet], filename);
       setStatus("convert", "Created " + filename + ".", "ok");
     });
@@ -203,7 +240,9 @@
     const data = new FormData(form);
     const out = {};
     data.forEach(function collect(value, key) {
-      out[key] = String(value || "").trim();
+      const field = form.elements[key];
+      const raw = String(value || "").trim();
+      out[key] = field && isDateInput(field) ? (Core.coerceToYmd(raw) || raw) : raw;
     });
     return out;
   }
@@ -211,18 +250,25 @@
   function addEpisodeRow(values) {
     const row = document.createElement("tr");
     row.innerHTML = [
+      '<td><input data-episode-field="seasonNumber" inputmode="numeric"></td>',
+      '<td><input data-episode-field="seasonSku"></td>',
       '<td><input data-episode-field="episodeNumber" inputmode="numeric"></td>',
       '<td><input data-episode-field="episodeName"></td>',
       '<td><input data-episode-field="episodeSku"></td>',
       '<td><input data-episode-field="gracenoteEpisodeId"></td>',
-      '<td><input data-episode-field="startDate" type="date"></td>',
-      '<td><input data-episode-field="endDate" type="date"></td>',
+      '<td><input data-episode-field="startDate" data-date-input placeholder="yyyy-mm-dd"></td>',
+      '<td><input data-episode-field="endDate" data-date-input placeholder="yyyy-mm-dd"></td>',
       '<td><button type="button" class="icon-action" aria-label="Remove row">×</button></td>'
     ].join("");
 
-    Object.entries(values || {}).forEach(function setValue(entry) {
+    const defaults = Object.assign({
+      seasonNumber: $("#season-number") ? $("#season-number").value : "",
+      seasonSku: $("#season-sku") ? $("#season-sku").value : ""
+    }, values || {});
+
+    Object.entries(defaults).forEach(function setValue(entry) {
       const input = $('[data-episode-field="' + entry[0] + '"]', row);
-      if (input) input.value = entry[1];
+      if (input) input.value = isDateInput(input) ? (Core.coerceToYmd(entry[1]) || entry[1]) : entry[1];
     });
 
     $(".icon-action", row).addEventListener("click", function removeRow() {
@@ -234,13 +280,16 @@
   }
 
   function applyTvDate(fieldName, value) {
-    if (!value) {
-      setStatus("tv", fieldName === "startDate" ? "Choose a Start Date first." : "Choose an End Date first.", "error");
+    const normalized = Core.coerceToYmd(value);
+    if (!normalized) {
+      setStatus("tv", fieldName === "startDate" ? "Choose a valid Start Date first." : "Choose a valid End Date first.", "error");
       return;
     }
     $$('[data-episode-field="' + fieldName + '"]', $("#episode-body")).forEach(function setDate(input) {
-      input.value = value;
+      input.value = normalized;
     });
+    const source = fieldName === "startDate" ? $("#tv-start") : $("#tv-end");
+    if (source) source.value = normalized;
     setStatus("tv", (fieldName === "startDate" ? "Start" : "End") + " date applied to every episode row.", "ok");
   }
 
@@ -248,10 +297,23 @@
     return $$("tr", $("#episode-body")).map(function mapRow(row) {
       const out = {};
       $$("[data-episode-field]", row).forEach(function collect(input) {
-        out[input.dataset.episodeField] = input.value.trim();
+        const raw = input.value.trim();
+        out[input.dataset.episodeField] = isDateInput(input) ? (Core.coerceToYmd(raw) || raw) : raw;
       });
       return out;
     });
+  }
+
+  function isDateInput(input) {
+    return input && input.matches && input.matches("[data-date-input]");
+  }
+
+  function normalizeDateInput(input) {
+    const raw = input.value.trim();
+    if (!raw) return "";
+    const normalized = Core.coerceToYmd(raw);
+    if (normalized) input.value = normalized;
+    return normalized;
   }
 
   async function importWhatsOnFile(file) {
@@ -364,6 +426,21 @@
       .replace(/\s+/g, " ")
       .slice(0, 60) || kind;
     return "Ultimate Avail Maker " + cleanedTitle + " " + targetPart + " " + Core.VERSION + ".xlsx";
+  }
+
+  function titleFromSheet(sheet) {
+    const fields = sheet.rows[1] || [];
+    const dataRow = (sheet.rows || []).slice(3).find(function findDataRow(row) {
+      return row && row.some(function hasValue(cell) { return String(cell || "").trim(); });
+    }) || [];
+    const candidates = sheet.workType === "Episode"
+      ? ["SeriesTitleInternalAlias", "SeriesTitleDisplayUnlimited", "SeriesID"]
+      : ["TitleInternalAlias", "TitleDisplayUnlimited", "ALID"];
+    for (let i = 0; i < candidates.length; i += 1) {
+      const idx = fields.indexOf(candidates[i]);
+      if (idx >= 0 && dataRow[idx]) return String(dataRow[idx]).trim();
+    }
+    return "";
   }
 
   function safeSheetName(name) {

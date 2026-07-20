@@ -63,10 +63,15 @@ if (fs.existsSync(whatsonSample)) {
   assert.equal(imported.tv.seriesName, "Curated for H.E.R.");
   assert.equal(imported.tv.seasonNumber, "1");
   assert.equal(imported.tv.seriesSku, "bb38ee54-5029-562e-b19b-e7ef830c0dbd");
-  assert.equal(imported.tv.seasonSku, "CrtdFrHRS01");
+  assert.equal(imported.tv.seasonSku, "f33971b2-5cea-5584-8755-3f0d7c28c01d");
+  assert.equal(imported.tvSeasons.length, 3);
   assert.equal(imported.tv.episodes.length, 6);
-  assert.equal(imported.tv.episodes[0].episodeNumber, "101");
+  assert.equal(imported.tv.episodes[0].episodeNumber, "1");
   assert.equal(imported.tv.episodes[0].episodeName, "Erica Kirk");
+  assert.equal(imported.tvSeasons[1].seasonNumber, "2");
+  assert.equal(imported.tvSeasons[1].seasonSku, "4dda940e-5433-5169-bb3f-c8841ba492ed");
+  assert.equal(imported.tvSeasons[1].episodes.length, 15);
+  assert.equal(imported.tvSeasons[1].episodes[0].episodeNumber, "1");
 }
 
 console.log("sample workbook smoke passed");
