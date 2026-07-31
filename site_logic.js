@@ -5,6 +5,8 @@
   const XLSX = window.XLSX;
   let convertWorkbook = null;
   let convertedSheet = null;
+  const previewSheets = { movie: null, tv: null, convert: null };
+  const sourceNames = { movie: "", tv: "", convert: "" };
 
   const $ = function select(selector, scope) {
     return (scope || document).querySelector(selector);
@@ -42,8 +44,23 @@
     $$("[data-clear-preview]").forEach(function addClearHandler(button) {
       button.addEventListener("click", function clearPreview() {
         const key = button.dataset.clearPreview;
+        previewSheets[key] = null;
         $("#" + key + "-preview").replaceChildren();
+        updateCopyButtons(key);
         setStatus(key, "");
+      });
+    });
+
+    $$("[data-copy-preview]").forEach(function addCopyHandler(button) {
+      button.addEventListener("click", async function copyPreview() {
+        const key = button.dataset.copyPreview;
+        const withHeaders = button.dataset.copyHeaders === "true";
+        try {
+          await copySheetRows(previewSheets[key], withHeaders);
+          setStatus(key, withHeaders ? "Copied with headers." : "Copied without headers.", "ok");
+        } catch (err) {
+          setStatus(key, err.message || String(err), "error");
+        }
       });
     });
   }
@@ -69,6 +86,7 @@
     $("#movie-import-file").addEventListener("change", async function importMovie(event) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
+      sourceNames.movie = baseFileName(file.name);
       try {
         const imported = await importWhatsOnFile(file);
         if (!imported.movie) throw new Error("No movie rows found in upload.");
@@ -85,9 +103,9 @@
           const target = button.dataset.buildMovie;
           const input = formObject($("#movie-form"));
           const sheet = Core.buildMovieSheet(input, target);
-          const filename = fileName(target, "Movie", input.title);
+          const filename = fileName(target, sourceNames.movie || input.title || "Movie");
           downloadWorkbook([sheet], filename);
-          renderPreview($("#movie-preview"), sheet.rows);
+          showPreview("movie", sheet);
           setStatus("movie", "Created " + filename + ".", "ok");
         } catch (err) {
           setStatus("movie", err.message || String(err), "error");
@@ -104,6 +122,7 @@
     $("#tv-import-file").addEventListener("change", async function importTv(event) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
+      sourceNames.tv = baseFileName(file.name);
       try {
         const imported = await importWhatsOnFile(file);
         if (!imported.tv) throw new Error("No episode rows found in upload.");
@@ -175,9 +194,9 @@
           const input = formObject($("#tv-form"));
           input.episodes = readEpisodeRows();
           const sheet = Core.buildTvSheet(input, target);
-          const filename = fileName(target, "TV", input.seriesName);
+          const filename = fileName(target, sourceNames.tv || input.seriesName || "TV");
           downloadWorkbook([sheet], filename);
-          renderPreview($("#tv-preview"), sheet.rows);
+          showPreview("tv", sheet);
           setStatus("tv", "Created " + filename + ".", "ok");
         } catch (err) {
           setStatus("tv", err.message || String(err), "error");
@@ -191,9 +210,12 @@
       const file = event.target.files && event.target.files[0];
       convertWorkbook = null;
       convertedSheet = null;
+      sourceNames.convert = file ? baseFileName(file.name) : "";
+      previewSheets.convert = null;
       $("#convert-download").disabled = true;
       $("#convert-sheet").replaceChildren();
       $("#convert-sheet").disabled = true;
+      updateCopyButtons("convert");
       if (!file) return;
 
       try {
@@ -218,7 +240,7 @@
         const target = $("#convert-target").value;
         const matrix = matrixForConversion();
         convertedSheet = Core.convertMatrix(matrix, target);
-        renderPreview($("#convert-preview"), convertedSheet.rows);
+        showPreview("convert", convertedSheet);
         $("#convert-download").disabled = false;
         setStatus("convert", "Converted to " + targetLabel(target) + ".", "ok");
       } catch (err) {
@@ -229,8 +251,8 @@
 
     $("#convert-download").addEventListener("click", function downloadConverted() {
       if (!convertedSheet) return;
-      const filenameTitle = titleFromSheet(convertedSheet) || "Converted";
-      const filename = fileName(convertedSheet.target, convertedSheet.workType === "Movie" ? "Movie" : "TV", filenameTitle);
+      const filenameTitle = titleFromSheet(convertedSheet) || sourceNames.convert || "Converted";
+      const filename = fileName(convertedSheet.target, filenameTitle);
       downloadWorkbook([convertedSheet], filename);
       setStatus("convert", "Created " + filename + ".", "ok");
     });
@@ -397,15 +419,25 @@
     XLSX.writeFile(workbook, filename, { bookType: "xlsx" });
   }
 
+  function showPreview(key, sheet) {
+    previewSheets[key] = sheet;
+    renderPreview($("#" + key + "-preview"), sheet.rows);
+    updateCopyButtons(key);
+  }
+
   function renderPreview(container, rows) {
     container.replaceChildren();
     if (!rows || !rows.length) return;
 
     const table = document.createElement("table");
     const body = document.createElement("tbody");
-    rows.slice(0, 9).forEach(function addRow(row, rowIndex) {
+    const width = rows.reduce(function maxWidth(max, row) {
+      return Math.max(max, row.length);
+    }, 0);
+    table.style.minWidth = Math.max(1040, width * 126) + "px";
+    rows.forEach(function addRow(row, rowIndex) {
       const tr = document.createElement("tr");
-      row.slice(0, 18).forEach(function addCell(cell, index) {
+      row.forEach(function addCell(cell, index) {
         const tag = rowIndex < 2 ? "th" : "td";
         const el = document.createElement(tag);
         el.textContent = cell === null || cell === undefined ? "" : String(cell);
@@ -418,14 +450,54 @@
     container.append(table);
   }
 
-  function fileName(target, kind, title) {
-    const targetPart = target === "youtube" ? "YouTube Style" : "Standard EMA";
-    const cleanedTitle = String(title || kind)
-      .replace(/[^a-z0-9]+/gi, " ")
-      .trim()
-      .replace(/\s+/g, " ")
-      .slice(0, 60) || kind;
-    return "Ultimate Avail Maker " + cleanedTitle + " " + targetPart + " " + Core.VERSION + ".xlsx";
+  function copySheetRows(sheet, withHeaders) {
+    if (!sheet || !sheet.rows || !sheet.rows.length) throw new Error("Nothing to copy yet.");
+    const rows = withHeaders ? sheet.rows : sheet.rows.slice(3);
+    if (!rows.length) throw new Error("Nothing to copy yet.");
+    const text = rowsToTsv(rows);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(function fallbackClipboard() {
+        fallbackCopyText(text);
+      });
+    }
+    fallbackCopyText(text);
+    return Promise.resolve();
+  }
+
+  function fallbackCopyText(text) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.append(textarea);
+    textarea.select();
+    const ok = document.execCommand("copy");
+    textarea.remove();
+    if (!ok) throw new Error("Copy failed.");
+  }
+
+  function rowsToTsv(rows) {
+    return rows.map(function rowToLine(row) {
+      return row.map(function cellToText(cell) {
+        return String(cell === null || cell === undefined ? "" : cell).replace(/\t/g, " ").replace(/\r?\n/g, " ");
+      }).join("\t");
+    }).join("\n");
+  }
+
+  function updateCopyButtons(key) {
+    const hasRows = !!(previewSheets[key] && previewSheets[key].rows && previewSheets[key].rows.length);
+    $$('[data-copy-preview="' + key + '"]').forEach(function updateButton(button) {
+      button.disabled = !hasRows;
+    });
+  }
+
+  function fileName(target, title) {
+    return Core.availFileName(target, title);
+  }
+
+  function baseFileName(value) {
+    return String(value || "").replace(/\.[^.\\/]+$/, "");
   }
 
   function titleFromSheet(sheet) {

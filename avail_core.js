@@ -7,8 +7,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function buildApi() {
   "use strict";
 
-  const VERSION = "V1_2";
-  const VERSION_LABEL = "V1.2";
+  const VERSION = "V1_3";
+  const VERSION_LABEL = "V1.3";
   const NY_TZ = "America/New_York";
   const YT_END_MAX_YMD = "2036-01-02";
 
@@ -721,6 +721,30 @@
     return widths;
   }
 
+  function availFileName(target, title, dateValue) {
+    const targetKey = canonicalTarget(target);
+    const stem = compactFileStem(title) || "Avails";
+    const prefix = targetKey === "youtube" ? "YT_" : "";
+    return prefix + stem + "_Avails_" + localDateStamp(dateValue || new Date()) + "_a.xlsx";
+  }
+
+  function compactFileStem(value) {
+    return clean(value)
+      .replace(/\.[^.\\/]+$/, "")
+      .replace(/[^a-z0-9]+/gi, "")
+      .slice(0, 80);
+  }
+
+  function localDateStamp(value) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) throw new Error("Invalid date for file name.");
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0")
+    ].join("_");
+  }
+
   function importWhatsOnMatrix(matrix) {
     const parsed = parseTable(matrix);
     const movieRows = parsed.rows.filter(function isMovie(row) {
@@ -984,6 +1008,7 @@
     buildTvSheet,
     convertMatrix,
     importWhatsOnMatrix,
+    availFileName,
     inspectMatrix,
     suggestColumnWidths,
     amazonDateToIsoStart,

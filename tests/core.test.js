@@ -166,6 +166,12 @@ function testPastedDateFormats() {
   assert.equal(Core.coerceToYmd("2029-6-10"), "2029-06-10");
 }
 
+function testAvailFileNames() {
+  const date = new Date(2026, 6, 31);
+  assert.equal(Core.availFileName("standard", "Princess Cut.xlsx", date), "PrincessCut_Avails_2026_07_31_a.xlsx");
+  assert.equal(Core.availFileName("youtube", "Princess Cut.xlsx", date), "YT_PrincessCut_Avails_2026_07_31_a.xlsx");
+}
+
 function testStandardToYouTubeConversion() {
   const standard = Core.buildMovieSheet({
     title: "Conversion Movie",
@@ -296,6 +302,7 @@ testTvStandardAndYouTube();
 testTvEpisodeDatesOverrideSeriesDates();
 testTvMultiSeasonRows();
 testPastedDateFormats();
+testAvailFileNames();
 testStandardToYouTubeConversion();
 testYouTubeToStandardConversion();
 testWhatsOnMovieImport();

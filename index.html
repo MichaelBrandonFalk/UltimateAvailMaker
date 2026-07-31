@@ -10,10 +10,10 @@
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.2</span></p>
+          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.3</span></p>
           <h1>Avails</h1>
         </div>
-        <a class="download-link" href="downloads/Ultimate Avail Maker V1_2.zip" download>Download V1.2</a>
+        <a class="download-link" href="downloads/Ultimate Avail Maker V1_3.zip" download>Download V1.3</a>
       </header>
 
       <main class="workspace">
@@ -60,7 +60,11 @@
           <section class="preview-surface" aria-live="polite">
             <div class="surface-header">
               <span>Preview</span>
-              <button type="button" class="secondary-action" data-clear-preview="movie">Clear</button>
+              <div class="header-actions">
+                <button type="button" class="secondary-action" data-copy-preview="movie" data-copy-headers="true" disabled>Copy With Headers</button>
+                <button type="button" class="secondary-action" data-copy-preview="movie" data-copy-headers="false" disabled>Copy Without Headers</button>
+                <button type="button" class="secondary-action" data-clear-preview="movie">Clear</button>
+              </div>
             </div>
             <div id="movie-preview" class="preview-grid"></div>
           </section>
@@ -143,7 +147,11 @@
           <section class="preview-surface" aria-live="polite">
             <div class="surface-header">
               <span>Preview</span>
-              <button type="button" class="secondary-action" data-clear-preview="tv">Clear</button>
+              <div class="header-actions">
+                <button type="button" class="secondary-action" data-copy-preview="tv" data-copy-headers="true" disabled>Copy With Headers</button>
+                <button type="button" class="secondary-action" data-copy-preview="tv" data-copy-headers="false" disabled>Copy Without Headers</button>
+                <button type="button" class="secondary-action" data-clear-preview="tv">Clear</button>
+              </div>
             </div>
             <div id="tv-preview" class="preview-grid"></div>
           </section>
@@ -176,7 +184,11 @@
           <section class="preview-surface" aria-live="polite">
             <div class="surface-header">
               <span>Preview</span>
-              <button type="button" class="secondary-action" data-clear-preview="convert">Clear</button>
+              <div class="header-actions">
+                <button type="button" class="secondary-action" data-copy-preview="convert" data-copy-headers="true" disabled>Copy With Headers</button>
+                <button type="button" class="secondary-action" data-copy-preview="convert" data-copy-headers="false" disabled>Copy Without Headers</button>
+                <button type="button" class="secondary-action" data-clear-preview="convert">Clear</button>
+              </div>
             </div>
             <div id="convert-preview" class="preview-grid"></div>
           </section>
