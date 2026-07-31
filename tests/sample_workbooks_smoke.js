@@ -10,6 +10,7 @@ const samples = [
   "/Users/brandon.falk/Downloads/YouTube Style Output.xlsx"
 ];
 const whatsonSample = "/Users/brandon.falk/Downloads/Curated for H.E.R..xlsx";
+const ozarkMovieSample = "/Users/brandon.falk/Downloads/An Ozark Mountain Christmas.xlsx";
 
 if (!samples.every((samplePath) => fs.existsSync(samplePath))) {
   console.log("sample workbook smoke skipped");
@@ -72,6 +73,14 @@ if (fs.existsSync(whatsonSample)) {
   assert.equal(imported.tvSeasons[1].seasonSku, "4dda940e-5433-5169-bb3f-c8841ba492ed");
   assert.equal(imported.tvSeasons[1].episodes.length, 15);
   assert.equal(imported.tvSeasons[1].episodes[0].episodeNumber, "1");
+}
+
+if (fs.existsSync(ozarkMovieSample)) {
+  const ozarkRows = matrixFromWorkbook(ozarkMovieSample, "Sheet1");
+  const imported = Core.importWhatsOnMatrix(ozarkRows);
+  assert.equal(imported.movie.title, "An Ozark Mountain Christmas");
+  assert.equal(imported.movie.sku, "1fe20853-ec64-585c-8d22-26d1eecd207c");
+  assert.equal(imported.counts.movies, 1);
 }
 
 console.log("sample workbook smoke passed");

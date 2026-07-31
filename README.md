@@ -1,6 +1,6 @@
 # Ultimate Avail Maker
 
-Current public version: `V1_3`.
+Current public version: `V1_4`.
 
 Public browser version: https://michaelbrandonfalk.github.io/UltimateAvailMaker/
 
@@ -15,6 +15,7 @@ Ultimate Avail Maker is a browser-based local tool for creating and converting a
 - Optional WhatsOn/Rally-style upload import to populate Movie and TV fields before dates are added.
 - Multi-season TV uploads can be exported in one TV avail.
 - Preview tables show every output field and can be copied with or without headers.
+- Clear buttons reset each tab's inputs, upload selection, status, and preview.
 - Standard EMA to YouTube conversion from pasted rows or uploaded `.xlsx`, `.xls`, `.csv`, `.tsv`, or `.txt` files.
 - YouTube to Standard EMA conversion is also supported for matching rows.
 
@@ -49,6 +50,8 @@ Ultimate Avail Maker is a browser-based local tool for creating and converting a
 The TV-level Season number, Season SKU, Start date, and End date are used as fallback values for episode rows. Use the apply-date buttons to copy the TV-level date to every episode row.
 
 Date fields accept pasted values such as `6/10/2029`, `2029-06-10`, or `June 10, 2029`, and export as `yyyy-mm-dd`.
+
+WhatsOn movie uploads populate the movie SKU from `VOD ID SKU`. For example, `An Ozark Mountain Christmas.xlsx` imports SKU `1fe20853-ec64-585c-8d22-26d1eecd207c`.
 
 ## Output File Names
 
@@ -105,13 +108,13 @@ http://localhost:8765/
 Run the versioned build script from this directory:
 
 ```bash
-./build_ultimate_avail_maker_v1_3.sh
+./build_ultimate_avail_maker_v1_4.sh
 ```
 
 The script creates:
 
 ```text
-downloads/Ultimate Avail Maker V1_3.zip
+downloads/Ultimate Avail Maker V1_4.zip
 ```
 
 The script refuses to overwrite an existing ZIP.

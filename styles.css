@@ -138,10 +138,22 @@ h1 {
   gap: 14px;
 }
 
-.import-row {
+.import-row,
+.panel-tools {
   display: grid;
   grid-template-columns: minmax(220px, 360px);
   margin-bottom: 14px;
+}
+
+.panel-tools {
+  align-items: end;
+  grid-template-columns: minmax(220px, 360px) auto;
+  justify-content: space-between;
+}
+
+.panel-tools.right-only {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .field {

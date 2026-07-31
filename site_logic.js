@@ -20,6 +20,7 @@
     $('[data-version]').textContent = Core.VERSION_LABEL;
     wireTabs();
     wireDateInputs();
+    wireClearForms();
     wireMovie();
     wireTv();
     wireConversion();
@@ -44,9 +45,7 @@
     $$("[data-clear-preview]").forEach(function addClearHandler(button) {
       button.addEventListener("click", function clearPreview() {
         const key = button.dataset.clearPreview;
-        previewSheets[key] = null;
-        $("#" + key + "-preview").replaceChildren();
-        updateCopyButtons(key);
+        clearPreviewState(key);
         setStatus(key, "");
       });
     });
@@ -61,6 +60,14 @@
         } catch (err) {
           setStatus(key, err.message || String(err), "error");
         }
+      });
+    });
+  }
+
+  function wireClearForms() {
+    $$("[data-clear-form]").forEach(function addClearFormHandler(button) {
+      button.addEventListener("click", function clearClicked() {
+        clearArea(button.dataset.clearForm);
       });
     });
   }
@@ -267,6 +274,48 @@
       out[key] = field && isDateInput(field) ? (Core.coerceToYmd(raw) || raw) : raw;
     });
     return out;
+  }
+
+  function clearArea(key) {
+    if (key === "movie") {
+      $("#movie-form").reset();
+      $("#movie-import-file").value = "";
+      sourceNames.movie = "";
+      clearPreviewState("movie");
+      setStatus("movie", "");
+      return;
+    }
+
+    if (key === "tv") {
+      $("#tv-form").reset();
+      $("#tv-import-file").value = "";
+      $("#episode-paste").value = "";
+      $("#episode-body").replaceChildren();
+      sourceNames.tv = "";
+      addEpisodeRow();
+      clearPreviewState("tv");
+      setStatus("tv", "");
+      return;
+    }
+
+    if (key === "convert") {
+      convertWorkbook = null;
+      convertedSheet = null;
+      sourceNames.convert = "";
+      $("#convert-file").value = "";
+      $("#convert-paste").value = "";
+      $("#convert-sheet").replaceChildren();
+      $("#convert-sheet").disabled = true;
+      $("#convert-download").disabled = true;
+      clearPreviewState("convert");
+      setStatus("convert", "");
+    }
+  }
+
+  function clearPreviewState(key) {
+    previewSheets[key] = null;
+    $("#" + key + "-preview").replaceChildren();
+    updateCopyButtons(key);
   }
 
   function addEpisodeRow(values) {

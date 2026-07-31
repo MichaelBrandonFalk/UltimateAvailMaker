@@ -4,16 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Ultimate Avail Maker</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=V1_4">
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.3</span></p>
+          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.4</span></p>
           <h1>Avails</h1>
         </div>
-        <a class="download-link" href="downloads/Ultimate Avail Maker V1_3.zip" download>Download V1.3</a>
+        <a class="download-link" href="downloads/Ultimate Avail Maker V1_4.zip" download>Download V1.4</a>
       </header>
 
       <main class="workspace">
@@ -24,11 +24,12 @@
         </nav>
 
         <section class="tool-panel" data-tab-panel="movie">
-          <div class="import-row">
+          <div class="panel-tools">
             <label class="field file-field" for="movie-import-file">
               <span>WhatsOn Upload</span>
               <input id="movie-import-file" type="file" accept=".xlsx,.xls,.csv,.txt,.tsv">
             </label>
+            <button type="button" class="secondary-action" data-clear-form="movie">Clear</button>
           </div>
           <form id="movie-form" class="form-grid" autocomplete="off">
             <label class="field" for="movie-title">
@@ -71,11 +72,12 @@
         </section>
 
         <section class="tool-panel" data-tab-panel="tv" hidden>
-          <div class="import-row">
+          <div class="panel-tools">
             <label class="field file-field" for="tv-import-file">
               <span>WhatsOn Upload</span>
               <input id="tv-import-file" type="file" accept=".xlsx,.xls,.csv,.txt,.tsv">
             </label>
+            <button type="button" class="secondary-action" data-clear-form="tv">Clear</button>
           </div>
           <form id="tv-form" class="form-grid" autocomplete="off">
             <label class="field" for="series-name">
@@ -158,6 +160,9 @@
         </section>
 
         <section class="tool-panel" data-tab-panel="convert" hidden>
+          <div class="panel-tools right-only">
+            <button type="button" class="secondary-action" data-clear-form="convert">Clear</button>
+          </div>
           <div class="convert-grid">
             <label class="field" for="convert-target">
               <span>Output</span>
@@ -196,8 +201,8 @@
       </main>
     </div>
 
-    <script src="libs/xlsx.full.min.js"></script>
-    <script src="avail_core.js"></script>
-    <script src="site_logic.js"></script>
+    <script src="libs/xlsx.full.min.js?v=V1_4"></script>
+    <script src="avail_core.js?v=V1_4"></script>
+    <script src="site_logic.js?v=V1_4"></script>
   </body>
 </html>

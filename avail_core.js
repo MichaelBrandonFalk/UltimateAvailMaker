@@ -7,8 +7,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function buildApi() {
   "use strict";
 
-  const VERSION = "V1_3";
-  const VERSION_LABEL = "V1.3";
+  const VERSION = "V1_4";
+  const VERSION_LABEL = "V1.4";
   const NY_TZ = "America/New_York";
   const YT_END_MAX_YMD = "2036-01-02";
 
