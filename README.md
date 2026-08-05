@@ -1,6 +1,6 @@
 # Ultimate Avail Maker
 
-Current public version: `V1_4`.
+Current public version: `V1_5`.
 
 Public browser version: https://michaelbrandonfalk.github.io/UltimateAvailMaker/
 
@@ -14,6 +14,7 @@ Ultimate Avail Maker is a browser-based local tool for creating and converting a
 - YouTube-style TV episode avails.
 - Optional WhatsOn/Rally-style upload import to populate Movie and TV fields before dates are added.
 - Multi-season TV uploads can be exported in one TV avail.
+- Multi-season TV uploads are sorted by season number and each episode row uses the matching season row's `VOD ID SKU`.
 - Preview tables show every output field and can be copied with or without headers.
 - Clear buttons reset each tab's inputs, upload selection, status, and preview.
 - Standard EMA to YouTube conversion from pasted rows or uploaded `.xlsx`, `.xls`, `.csv`, `.tsv`, or `.txt` files.
@@ -77,6 +78,8 @@ For a native WhatsOn season row where `Content type` is `Series`, the app matche
 
 If a WhatsOn upload contains multiple seasons for the same series, all seasons are loaded into the episode table and exported together. For example, `Curated for H.E.R.` season 2 uses Season SKU `4dda940e-5433-5169-bb3f-c8841ba492ed`.
 
+For a four-season WhatsOn upload such as `Carpooling with Jesus Season 1 through 4 .xlsx`, the app exports seasons 1 through 4 in order and applies the correct season SKU to each episode row.
+
 ## YouTube End Date Clamp
 
 YouTube output dates are converted from New York availability dates to UTC timestamps.
@@ -108,13 +111,13 @@ http://localhost:8765/
 Run the versioned build script from this directory:
 
 ```bash
-./build_ultimate_avail_maker_v1_4.sh
+./build_ultimate_avail_maker_v1_5.sh
 ```
 
 The script creates:
 
 ```text
-downloads/Ultimate Avail Maker V1_4.zip
+downloads/Ultimate Avail Maker V1_5.zip
 ```
 
 The script refuses to overwrite an existing ZIP.

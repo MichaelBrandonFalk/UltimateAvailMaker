@@ -7,8 +7,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function buildApi() {
   "use strict";
 
-  const VERSION = "V1_4";
-  const VERSION_LABEL = "V1.4";
+  const VERSION = "V1_5";
+  const VERSION_LABEL = "V1.5";
   const NY_TZ = "America/New_York";
   const YT_END_MAX_YMD = "2036-01-02";
 
@@ -838,9 +838,18 @@
       group.rows.push(row);
     });
 
-    return groups.map(function buildSeason(group) {
+    return groups.sort(compareSeasonGroups).map(function buildSeason(group) {
       return tvSeasonFromWhatsOnRows(group.rows, seriesRows, seasonRows);
     }).filter(Boolean);
+  }
+
+  function compareSeasonGroups(a, b) {
+    const seriesCompare = clean(a.seriesName).localeCompare(clean(b.seriesName), undefined, { numeric: true });
+    if (seriesCompare) return seriesCompare;
+    const aNum = Number(clean(a.seasonNumber));
+    const bNum = Number(clean(b.seasonNumber));
+    if (!Number.isNaN(aNum) && !Number.isNaN(bNum) && aNum !== bNum) return aNum - bNum;
+    return clean(a.seasonNumber).localeCompare(clean(b.seasonNumber), undefined, { numeric: true });
   }
 
   function tvFromWhatsOnRows(episodeRows, seriesRows, seasonRows) {

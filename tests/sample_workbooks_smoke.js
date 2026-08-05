@@ -11,6 +11,7 @@ const samples = [
 ];
 const whatsonSample = "/Users/brandon.falk/Downloads/Curated for H.E.R..xlsx";
 const ozarkMovieSample = "/Users/brandon.falk/Downloads/An Ozark Mountain Christmas.xlsx";
+const carpoolingSample = "/Users/brandon.falk/Downloads/Carpooling with Jesus Season 1 through 4 .xlsx";
 
 if (!samples.every((samplePath) => fs.existsSync(samplePath))) {
   console.log("sample workbook smoke skipped");
@@ -81,6 +82,42 @@ if (fs.existsSync(ozarkMovieSample)) {
   assert.equal(imported.movie.title, "An Ozark Mountain Christmas");
   assert.equal(imported.movie.sku, "1fe20853-ec64-585c-8d22-26d1eecd207c");
   assert.equal(imported.counts.movies, 1);
+}
+
+if (fs.existsSync(carpoolingSample)) {
+  const carpoolingRows = matrixFromWorkbook(carpoolingSample, "Sheet1");
+  const imported = Core.importWhatsOnMatrix(carpoolingRows);
+  const expectedSeasonSkus = {
+    "1": "8ea35473-017e-5de8-99d5-8085a00d49ea",
+    "2": "592b2ebd-c3f5-5550-9085-79b833b7abd7",
+    "3": "e34ad83b-ebe1-576b-89f7-927ea59c74c3",
+    "4": "a092beaa-030c-55bd-b21e-72669a3ef984"
+  };
+  const expectedEpisodeCounts = { "1": 10, "2": 12, "3": 16, "4": 11 };
+
+  assert.equal(imported.tv.seriesName, "Carpooling with Jesus");
+  assert.equal(imported.tv.seriesSku, "13db00f7-dff9-5004-b7d3-d49fb2f6a6b4");
+  assert.deepEqual(imported.tvSeasons.map((season) => season.seasonNumber), ["1", "2", "3", "4"]);
+  assert.equal(imported.tvSeasons.reduce((sum, season) => sum + season.episodes.length, 0), 49);
+  imported.tvSeasons.forEach((season) => {
+    assert.equal(season.seasonSku, expectedSeasonSkus[season.seasonNumber]);
+    assert.equal(season.episodes.length, expectedEpisodeCounts[season.seasonNumber]);
+    season.episodes.forEach((episode) => {
+      assert.equal(episode.seasonSku, expectedSeasonSkus[season.seasonNumber]);
+    });
+  });
+
+  const generated = Core.buildTvSheet(Object.assign({}, imported.tv, {
+    startDate: "2026-01-01",
+    endDate: "2030-01-01",
+    episodes: imported.tvSeasons.flatMap((season) => season.episodes)
+  }), "standard");
+  const seasonNumberIdx = indexFor(generated.rows, "SeasonNumber");
+  const seasonAltIdIdx = indexFor(generated.rows, "SeasonAltID");
+  assert.equal(generated.rows.length, 52);
+  generated.rows.slice(3).forEach((row) => {
+    assert.equal(row[seasonAltIdIdx], expectedSeasonSkus[row[seasonNumberIdx]]);
+  });
 }
 
 console.log("sample workbook smoke passed");
