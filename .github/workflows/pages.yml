@@ -1,0 +1,48 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Stage static site
+        run: |
+          mkdir -p public-site/downloads public-site/libs public-site/LICENSES
+          cp index.html styles.css site_logic.js avail_core.js README.md THIRD_PARTY_NOTICES.md public-site/
+          cp "Launch Ultimate Avail Maker.command" public-site/
+          cp libs/xlsx.full.min.js public-site/libs/
+          cp LICENSES/sheetjs.LICENSE public-site/LICENSES/
+          cp downloads/*.zip public-site/downloads/
+          touch public-site/.nojekyll
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public-site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
