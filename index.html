@@ -4,16 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Ultimate Avail Maker</title>
-    <link rel="stylesheet" href="styles.css?v=V1_5">
+    <link rel="stylesheet" href="styles.css?v=V1_6">
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.5</span></p>
+          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.6</span></p>
           <h1>Avails</h1>
         </div>
-        <a class="download-link" href="downloads/Ultimate Avail Maker V1_5.zip" download>Download V1.5</a>
+        <a class="download-link" href="downloads/Ultimate Avail Maker V1_6.zip" download>Download V1.6</a>
       </header>
 
       <main class="workspace">
@@ -40,14 +40,20 @@
               <span>SKU</span>
               <input id="movie-sku" name="sku" required>
             </label>
-            <label class="field" for="movie-start">
-              <span>Start Date</span>
-              <input id="movie-start" name="startDate" data-date-input placeholder="yyyy-mm-dd" required>
-            </label>
-            <label class="field" for="movie-end">
-              <span>End Date</span>
-              <input id="movie-end" name="endDate" data-date-input placeholder="yyyy-mm-dd" required>
-            </label>
+            <div class="field date-field">
+              <label for="movie-start">Start Date</label>
+              <div class="date-pair">
+                <input id="movie-start" name="startDate" data-date-input placeholder="yyyy-mm-dd" required>
+                <input id="movie-start-picker" class="date-picker" type="date" data-date-picker data-date-target="movie-start" aria-label="Choose movie start date" title="Choose start date">
+              </div>
+            </div>
+            <div class="field date-field">
+              <label for="movie-end">End Date</label>
+              <div class="date-pair">
+                <input id="movie-end" name="endDate" data-date-input placeholder="yyyy-mm-dd" required>
+                <input id="movie-end-picker" class="date-picker" type="date" data-date-picker data-date-target="movie-end" aria-label="Choose movie end date" title="Choose end date">
+              </div>
+            </div>
             <label class="field" for="movie-gracenote">
               <span>Gracenote ID</span>
               <input id="movie-gracenote" name="gracenoteId">
@@ -96,14 +102,20 @@
               <span>Season SKU</span>
               <input id="season-sku" name="seasonSku" required>
             </label>
-            <label class="field" for="tv-start">
-              <span>Start Date</span>
-              <input id="tv-start" name="startDate" data-date-input placeholder="yyyy-mm-dd">
-            </label>
-            <label class="field" for="tv-end">
-              <span>End Date</span>
-              <input id="tv-end" name="endDate" data-date-input placeholder="yyyy-mm-dd">
-            </label>
+            <div class="field date-field">
+              <label for="tv-start">Start Date</label>
+              <div class="date-pair">
+                <input id="tv-start" name="startDate" data-date-input placeholder="yyyy-mm-dd">
+                <input id="tv-start-picker" class="date-picker" type="date" data-date-picker data-date-target="tv-start" aria-label="Choose TV start date" title="Choose start date">
+              </div>
+            </div>
+            <div class="field date-field">
+              <label for="tv-end">End Date</label>
+              <div class="date-pair">
+                <input id="tv-end" name="endDate" data-date-input placeholder="yyyy-mm-dd">
+                <input id="tv-end-picker" class="date-picker" type="date" data-date-picker data-date-target="tv-end" aria-label="Choose TV end date" title="Choose end date">
+              </div>
+            </div>
             <label class="field" for="show-gracenote">
               <span>Gracenote Show ID</span>
               <input id="show-gracenote" name="gracenoteShowId">
@@ -201,8 +213,8 @@
       </main>
     </div>
 
-    <script src="libs/xlsx.full.min.js?v=V1_5"></script>
-    <script src="avail_core.js?v=V1_5"></script>
-    <script src="site_logic.js?v=V1_5"></script>
+    <script src="libs/xlsx.full.min.js?v=V1_6"></script>
+    <script src="avail_core.js?v=V1_6"></script>
+    <script src="site_logic.js?v=V1_6"></script>
   </body>
 </html>

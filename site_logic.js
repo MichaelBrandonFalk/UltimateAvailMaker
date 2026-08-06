@@ -20,6 +20,7 @@
     $('[data-version]').textContent = Core.VERSION_LABEL;
     wireTabs();
     wireDateInputs();
+    wireDatePickers();
     wireClearForms();
     wireMovie();
     wireTv();
@@ -74,18 +75,31 @@
 
   function wireDateInputs() {
     document.addEventListener("blur", function normalizeOnBlur(event) {
-      if (isDateInput(event.target)) normalizeDateInput(event.target);
+      if (isDateInput(event.target)) normalizeAndSyncDateInput(event.target);
     }, true);
 
     document.addEventListener("change", function normalizeOnChange(event) {
-      if (isDateInput(event.target)) normalizeDateInput(event.target);
+      if (isDateInput(event.target)) normalizeAndSyncDateInput(event.target);
     });
 
     document.addEventListener("paste", function normalizeOnPaste(event) {
       if (!isDateInput(event.target)) return;
       setTimeout(function normalizeAfterPaste() {
-        normalizeDateInput(event.target);
+        normalizeAndSyncDateInput(event.target);
       }, 0);
+    });
+  }
+
+  function wireDatePickers() {
+    $$("[data-date-picker]").forEach(function addPickerHandler(picker) {
+      const target = pickerTarget(picker);
+      if (target) syncDatePickerFromInput(target);
+      picker.addEventListener("change", function pickerChanged() {
+        const input = pickerTarget(picker);
+        if (!input) return;
+        input.value = picker.value;
+        normalizeAndSyncDateInput(input);
+      });
     });
   }
 
@@ -360,7 +374,10 @@
       input.value = normalized;
     });
     const source = fieldName === "startDate" ? $("#tv-start") : $("#tv-end");
-    if (source) source.value = normalized;
+    if (source) {
+      source.value = normalized;
+      syncDatePickerFromInput(source);
+    }
     setStatus("tv", (fieldName === "startDate" ? "Start" : "End") + " date applied to every episode row.", "ok");
   }
 
@@ -387,6 +404,29 @@
     return normalized;
   }
 
+  function normalizeAndSyncDateInput(input) {
+    const normalized = normalizeDateInput(input);
+    syncDatePickerFromInput(input);
+    return normalized;
+  }
+
+  function syncDatePickerFromInput(input) {
+    const picker = datePickerForInput(input);
+    if (!picker) return;
+    picker.value = Core.coerceToYmd(input.value) || "";
+  }
+
+  function datePickerForInput(input) {
+    if (!input || !input.id) return null;
+    return $$("[data-date-picker]").find(function matchesTarget(picker) {
+      return picker.dataset.dateTarget === input.id;
+    }) || null;
+  }
+
+  function pickerTarget(picker) {
+    return picker && picker.dataset.dateTarget ? document.getElementById(picker.dataset.dateTarget) : null;
+  }
+
   async function importWhatsOnFile(file) {
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
@@ -407,7 +447,10 @@
     Object.entries(values || {}).forEach(function setValue(entry) {
       if (entry[0] === "episodes") return;
       const field = $('[name="' + entry[0] + '"]', form);
-      if (field && entry[1] !== undefined && entry[1] !== null) field.value = entry[1];
+      if (field && entry[1] !== undefined && entry[1] !== null) {
+        field.value = isDateInput(field) ? (Core.coerceToYmd(entry[1]) || entry[1]) : entry[1];
+        if (isDateInput(field)) syncDatePickerFromInput(field);
+      }
     });
   }
 
