@@ -1,0 +1,135 @@
+# Ultimate Avail Maker
+
+Current public version: `V1_6`.
+
+Public browser version: https://michaelbrandonfalk.github.io/UltimateAvailMaker/
+
+Ultimate Avail Maker is a browser-based local tool for creating and converting avails workbooks.
+
+## Outputs
+
+- Standard EMA movie avails.
+- Standard EMA TV episode avails.
+- YouTube-style movie avails.
+- YouTube-style TV episode avails.
+- Optional WhatsOn/Rally-style upload import to populate Movie and TV fields before dates are added.
+- Multi-season TV uploads can be exported in one TV avail.
+- Multi-season TV uploads are sorted by season number and each episode row uses the matching season row's `VOD ID SKU`.
+- Preview tables show every output field and can be copied with or without headers.
+- Clear buttons reset each tab's inputs, upload selection, status, and preview.
+- Movie and TV top-level Start Date and End Date fields include calendar pickers that populate the adjacent date field.
+- Standard EMA to YouTube conversion from pasted rows or uploaded `.xlsx`, `.xls`, `.csv`, `.tsv`, or `.txt` files.
+- YouTube to Standard EMA conversion is also supported for matching rows.
+
+## Movie Inputs
+
+- Optional WhatsOn Upload file (`.xlsx`, `.xls`, `.csv`, `.tsv`, or `.txt`)
+- Title
+- SKU
+- Start date
+- End date
+- Optional Gracenote ID, written to `RetailerID1`
+
+## TV Inputs
+
+- Optional WhatsOn Upload file (`.xlsx`, `.xls`, `.csv`, `.tsv`, or `.txt`)
+- Series name
+- Season number
+- Series SKU
+- Season SKU
+- Start date
+- End date
+- Optional Gracenote Show ID, written to `RetailerSeriesID`
+- Episode rows:
+  - Season number
+  - Season SKU
+  - Episode number
+  - Episode name
+  - Episode SKU
+  - Optional Gracenote Episode ID, written to `RetailerEpisodeID1`
+  - Optional per-episode Start date and End date
+
+The TV-level Season number, Season SKU, Start date, and End date are used as fallback values for episode rows. Use the apply-date buttons to copy the TV-level date to every episode row.
+
+Date fields accept pasted values such as `6/10/2029`, `2029-06-10`, or `June 10, 2029`, and export as `yyyy-mm-dd`.
+
+WhatsOn movie uploads populate the movie SKU from `VOD ID SKU`. For example, `An Ozark Mountain Christmas.xlsx` imports SKU `1fe20853-ec64-585c-8d22-26d1eecd207c`.
+
+## Output File Names
+
+Downloads use the source upload name when available, otherwise the entered title or series name.
+
+- Standard EMA: `FileName_Avails_YYYY_MM_DD_a.xlsx`
+- YouTube: `YT_FileName_Avails_YYYY_MM_DD_a.xlsx`
+
+For example, uploading `Princess Cut.xlsx` on July 31, 2026 creates `PrincessCut_Avails_2026_07_31_a.xlsx` for Standard EMA and `YT_PrincessCut_Avails_2026_07_31_a.xlsx` for YouTube.
+
+## WhatsOn Upload Mapping
+
+Native WhatsOn uploads use these fields:
+
+- `Content type`: `Program` becomes Movie, `Parent series` becomes the series row, `Series` becomes the season row, and `Episode` becomes episode rows.
+- `VOD ID SKU`: SKU for movie, series, season, or episode rows when present.
+- `Parent series`: series name.
+- `Title`: movie title, season title, or episode title depending on row type.
+- `Season`: season number. Values like `1.0` are written as `1`.
+- `Episode #`: episode number. Season-prefixed values are normalized inside the season, so `101` becomes `1` and `225` becomes `25`.
+
+For a native WhatsOn season row where `Content type` is `Series`, the app matches by the `Season` column and uses that row's `VOD ID SKU` as the Season SKU. `External reference` is only a last fallback if the season row has no usable VOD SKU.
+
+If a WhatsOn upload contains multiple seasons for the same series, all seasons are loaded into the episode table and exported together. For example, `Curated for H.E.R.` season 2 uses Season SKU `4dda940e-5433-5169-bb3f-c8841ba492ed`.
+
+For a four-season WhatsOn upload such as `Carpooling with Jesus Season 1 through 4 .xlsx`, the app exports seasons 1 through 4 in order and applies the correct season SKU to each episode row.
+
+## YouTube End Date Clamp
+
+YouTube output dates are converted from New York availability dates to UTC timestamps.
+
+Any YouTube end date later than `2036-01-02` is clamped to the New York end-of-day timestamp for `2036-01-02`, which exports as:
+
+```text
+2036-01-03T04:59:59Z
+```
+
+## Local Use
+
+Open `index.html` in a browser.
+
+For a local static server:
+
+```bash
+python3 -m http.server 8765
+```
+
+Then open:
+
+```text
+http://localhost:8765/
+```
+
+## Versioned Build
+
+Run the versioned build script from this directory:
+
+```bash
+./build_ultimate_avail_maker_v1_6.sh
+```
+
+The script creates:
+
+```text
+downloads/Ultimate Avail Maker V1_6.zip
+```
+
+The script refuses to overwrite an existing ZIP.
+
+## Browser Version
+
+The same `index.html` is the browser version and can be hosted as a static GitHub Pages site.
+
+## Tests
+
+```bash
+node tests/core.test.js
+node tests/sample_workbooks_smoke.js
+```
