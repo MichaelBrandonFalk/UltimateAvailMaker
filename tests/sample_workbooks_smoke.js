@@ -13,6 +13,7 @@ const whatsonSample = "/Users/brandon.falk/Downloads/Curated for H.E.R..xlsx";
 const ozarkMovieSample = "/Users/brandon.falk/Downloads/An Ozark Mountain Christmas.xlsx";
 const carpoolingSample = "/Users/brandon.falk/Downloads/Carpooling with Jesus Season 1 through 4 .xlsx";
 const metadataSample = "/Users/brandon.falk/Downloads/Master_PureFlix_Metadata_2025-2026 (1).xlsx";
+const americaReadsSample = "/Users/brandon.falk/Downloads/America Reads the Bible Devotional Rails.xlsx";
 
 if (!samples.every((samplePath) => fs.existsSync(samplePath))) {
   console.log("sample workbook smoke skipped");
@@ -103,6 +104,27 @@ if (fs.existsSync(metadataSample)) {
   assert.equal(imported.tv.startDate, "2026-08-13");
   assert.equal(imported.tv.endDate, "2031-08-13");
   assert.ok(imported.tv.episodes.length > 0);
+}
+
+if (fs.existsSync(metadataSample) && fs.existsSync(americaReadsSample)) {
+  const whatsonRows = matrixFromWorkbook(americaReadsSample, "Sheet1");
+  const whatson = Core.importWhatsOnMatrix(whatsonRows);
+  const metadataRows = matrixFromWorkbook(metadataSample);
+  const metadata = Core.importMetadataSmartSheetMatrix(metadataRows, {
+    preferredSeriesName: whatson.tv.seriesName,
+    preferredSeriesSku: whatson.tv.seriesSku
+  });
+
+  assert.equal(whatson.tv.seriesName, "America Reads the Bible: Devotional Rails");
+  assert.equal(whatson.tv.seriesSku, "c618c1bd-c5de-501d-9c79-5d93693b7bca");
+  assert.equal(whatson.tv.episodes.length, 30);
+  assert.equal(metadata.tv.seriesName, "America Reads the Bible Devotionals");
+  assert.equal(metadata.tv.seriesSku, "c618c1bd-c5de-501d-9c79-5d93693b7bca");
+  assert.equal(metadata.tv.startDate, "2026-05-21");
+  assert.equal(metadata.tv.endDate, "");
+  assert.equal(metadata.tv.episodes.length, 10);
+  assert.equal(metadata.tv.episodes[0].episodeNumber, "1");
+  assert.equal(metadata.tv.episodes[0].startDate, "2026-05-21");
 }
 
 if (fs.existsSync(carpoolingSample)) {

@@ -108,17 +108,7 @@
 
   function wireMovie() {
     $("#movie-import-file").addEventListener("change", async function importMovie(event) {
-      const file = event.target.files && event.target.files[0];
-      if (!file) return;
-      sourceNames.movie = baseFileName(file.name);
-      try {
-        const imported = await importWhatsOnFile(file);
-        if (!imported.movie) throw new Error("No movie rows found in upload.");
-        fillForm($("#movie-form"), imported.movie);
-        setStatus("movie", "Loaded " + file.name + ": " + imported.counts.movies + " movie row(s). Review fields and add dates before exporting.", "ok");
-      } catch (err) {
-        setStatus("movie", err.message || String(err), "error");
-      }
+      await handleWhatsOnImport(event, "movie");
     });
 
     $("#movie-metadata-file").addEventListener("change", async function importMovieMetadata(event) {
@@ -148,30 +138,7 @@
     });
 
     $("#tv-import-file").addEventListener("change", async function importTv(event) {
-      const file = event.target.files && event.target.files[0];
-      if (!file) return;
-      sourceNames.tv = baseFileName(file.name);
-      try {
-        const imported = await importWhatsOnFile(file);
-        if (!imported.tv) throw new Error("No episode rows found in upload.");
-        const seasons = imported.tvSeasons && imported.tvSeasons.length ? imported.tvSeasons : [imported.tv];
-        fillForm($("#tv-form"), seasons[0]);
-        $("#episode-body").replaceChildren();
-        let episodeCount = 0;
-        seasons.forEach(function addImportedSeason(season) {
-          season.episodes.forEach(function addImportedEpisode(episode) {
-            episodeCount += 1;
-            addEpisodeRow(Object.assign({}, episode, {
-              seasonNumber: episode.seasonNumber || season.seasonNumber,
-              seasonSku: episode.seasonSku || season.seasonSku
-            }));
-          });
-        });
-        if (!$("#episode-body").children.length) addEpisodeRow();
-        setStatus("tv", "Loaded " + file.name + ": " + seasons.length + " season(s), " + episodeCount + " episode row(s). Review fields and add dates before exporting.", "ok");
-      } catch (err) {
-        setStatus("tv", err.message || String(err), "error");
-      }
+      await handleWhatsOnImport(event, "tv");
     });
 
     $("#tv-metadata-file").addEventListener("change", async function importTvMetadata(event) {
@@ -440,27 +407,59 @@
     return picker && picker.dataset.dateTarget ? document.getElementById(picker.dataset.dateTarget) : null;
   }
 
+  async function handleWhatsOnImport(event, preferredArea) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    try {
+      const imported = await importWhatsOnFile(file);
+      const target = preferredArea === "tv" && imported.tv
+        ? "tv"
+        : preferredArea === "movie" && imported.movie
+          ? "movie"
+          : imported.tv
+            ? "tv"
+            : imported.movie
+              ? "movie"
+              : "";
+      if (!target) throw new Error("No Movie or TV rows found in upload.");
+      if (target !== preferredArea) {
+        clearUploadInput(preferredArea, "whatson");
+        setStatus(preferredArea, "");
+      }
+
+      if (target === "movie") {
+        sourceNames.movie = baseFileName(file.name);
+        setActiveTab("movie");
+        fillForm($("#movie-form"), imported.movie);
+        setStatus("movie", "Loaded " + file.name + ": " + imported.counts.movies + " movie row(s). Review fields and add dates before exporting.", "ok");
+      } else {
+        sourceNames.tv = baseFileName(file.name);
+        setActiveTab("tv");
+        applyWhatsOnTv(imported, file.name);
+      }
+    } catch (err) {
+      setStatus(preferredArea, err.message || String(err), "error");
+    }
+  }
+
   async function handleMetadataImport(event, preferredArea) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
-    const options = preferredArea === "tv"
-      ? { preferredSeriesName: $("#series-name").value }
-      : { preferredTitle: $("#movie-title").value };
+    const hasTvContext = tvHasExistingRecords();
+    const hasMovieContext = !hasTvContext && movieHasExistingRecords();
+    const hasTvRows = !episodeRowsAreBlank();
+    const statusArea = hasTvContext ? "tv" : hasMovieContext ? "movie" : preferredArea;
+    const options = metadataOptions(preferredArea, hasTvContext, hasMovieContext);
 
     try {
       const imported = await importMetadataFile(file, options);
-      const target = preferredArea === "movie" && imported.movie
-        ? "movie"
-        : preferredArea === "tv" && imported.tv
-          ? "tv"
-          : imported.movie
-            ? "movie"
-            : imported.tv
-              ? "tv"
-              : "";
-      if (!target) throw new Error("No Movie or TV metadata rows found in upload.");
+      const target = metadataTarget(imported, preferredArea, hasTvContext, hasMovieContext);
+      if (!target) throw new Error(hasTvContext ? "No matching TV metadata rows found for the current WhatsOn records." : hasMovieContext ? "No matching movie metadata row found for the current Movie fields." : "No Movie or TV metadata rows found in upload.");
       if (!sourceNames[target]) sourceNames[target] = baseFileName(file.name);
-      if (target !== preferredArea) setStatus(preferredArea, "");
+      if (target !== preferredArea) {
+        clearUploadInput(preferredArea, "metadata");
+        setStatus(preferredArea, "");
+      }
 
       if (target === "movie") {
         setActiveTab("movie");
@@ -468,12 +467,79 @@
         setStatus("movie", "Loaded Metadata Smart Sheet " + file.name + ": movie dates and blank fields populated.", "ok");
       } else {
         setActiveTab("tv");
-        applyMetadataTv(imported.tv, imported.tvSeasons || []);
-        setStatus("tv", "Loaded Metadata Smart Sheet " + file.name + ": " + (imported.tvSeasons || []).length + " season group(s), " + imported.counts.episodes + " episode row(s).", "ok");
+        const result = applyMetadataTv(imported.tv, imported.tvSeasons || [], { allowCreateRows: !hasTvRows });
+        const message = hasTvRows
+          ? "Loaded Metadata Smart Sheet " + file.name + ": " + result.matchedRows + " existing episode row(s) matched; no new rows created."
+          : "Loaded Metadata Smart Sheet " + file.name + ": " + (imported.tvSeasons || []).length + " season group(s), " + result.createdRows + " episode row(s).";
+        setStatus("tv", message, "ok");
       }
     } catch (err) {
-      setStatus(preferredArea, err.message || String(err), "error");
+      setStatus(statusArea, err.message || String(err), "error");
     }
+  }
+
+  function metadataTarget(imported, preferredArea, hasTvContext, hasMovieContext) {
+    if (hasTvContext) return imported.tv ? "tv" : "";
+    if (hasMovieContext) return imported.movie ? "movie" : "";
+    if (preferredArea === "movie" && imported.movie) return "movie";
+    if (preferredArea === "tv" && imported.tv) return "tv";
+    if (imported.movie) return "movie";
+    return imported.tv ? "tv" : "";
+  }
+
+  function clearUploadInput(area, kind) {
+    const id = area === "movie"
+      ? kind === "metadata" ? "movie-metadata-file" : "movie-import-file"
+      : kind === "metadata" ? "tv-metadata-file" : "tv-import-file";
+    const input = document.getElementById(id);
+    if (input) input.value = "";
+  }
+
+  function applyWhatsOnTv(imported, fileName) {
+    if (!imported.tv) throw new Error("No episode rows found in upload.");
+    const seasons = imported.tvSeasons && imported.tvSeasons.length ? imported.tvSeasons : [imported.tv];
+    fillForm($("#tv-form"), seasons[0]);
+    $("#episode-body").replaceChildren();
+    let episodeCount = 0;
+    seasons.forEach(function addImportedSeason(season) {
+      season.episodes.forEach(function addImportedEpisode(episode) {
+        episodeCount += 1;
+        addEpisodeRow(Object.assign({}, episode, {
+          seasonNumber: episode.seasonNumber || season.seasonNumber,
+          seasonSku: episode.seasonSku || season.seasonSku
+        }));
+      });
+    });
+    if (!$("#episode-body").children.length) addEpisodeRow();
+    setStatus("tv", "Loaded " + fileName + ": " + seasons.length + " season(s), " + episodeCount + " episode row(s). Review fields and add dates before exporting.", "ok");
+  }
+
+  function metadataOptions(preferredArea, hasTvContext, hasMovieContext) {
+    if (hasTvContext || preferredArea === "tv") {
+      return {
+        preferredSeriesName: $("#series-name").value,
+        preferredSeriesSku: $("#series-sku").value
+      };
+    }
+    if (hasMovieContext || preferredArea === "movie") return { preferredTitle: $("#movie-title").value };
+    return {};
+  }
+
+  function tvHasExistingRecords() {
+    return !!sourceNames.tv
+      || ["series-name", "season-number", "series-sku", "season-sku", "tv-start", "tv-end"].some(function hasValue(id) {
+        const input = document.getElementById(id);
+        return input && cleanText(input.value);
+      })
+      || !episodeRowsAreBlank();
+  }
+
+  function movieHasExistingRecords() {
+    return !!sourceNames.movie
+      || ["movie-title", "movie-sku", "movie-start", "movie-end", "movie-gracenote"].some(function hasValue(id) {
+        const input = document.getElementById(id);
+        return input && cleanText(input.value);
+      });
   }
 
   async function importWhatsOnFile(file) {
@@ -508,7 +574,8 @@
     throw lastError || new Error("Could not read the Metadata Smart Sheet.");
   }
 
-  function applyMetadataTv(tv, tvSeasons) {
+  function applyMetadataTv(tv, tvSeasons, options) {
+    const allowCreateRows = !options || options.allowCreateRows !== false;
     const seasons = tvSeasons.length ? tvSeasons : [tv];
     fillForm($("#tv-form"), seasons[0], { fillOnlyBlank: true });
     const episodes = seasons.flatMap(function flattenSeason(season) {
@@ -522,19 +589,21 @@
       });
     });
 
-    if (!episodes.length) return;
+    if (!episodes.length) return { createdRows: 0, matchedRows: 0 };
     if (episodeRowsAreBlank()) {
+      if (!allowCreateRows) return { createdRows: 0, matchedRows: 0 };
       $("#episode-body").replaceChildren();
       episodes.forEach(function addImportedEpisode(episode) {
         addEpisodeRow(episode);
       });
-      return;
+      return { createdRows: episodes.length, matchedRows: 0 };
     }
-    mergeMetadataEpisodes(episodes);
+    return { createdRows: 0, matchedRows: mergeMetadataEpisodes(episodes) };
   }
 
   function mergeMetadataEpisodes(episodes) {
     const used = new Set();
+    let matchedRows = 0;
     $$("tr", $("#episode-body")).forEach(function mergeRow(row) {
       const current = episodeRowObject(row);
       const matchIndex = episodes.findIndex(function findMatch(episode, index) {
@@ -542,8 +611,10 @@
       });
       if (matchIndex < 0) return;
       used.add(matchIndex);
+      matchedRows += 1;
       setEpisodeRowValues(row, episodes[matchIndex], { fillOnlyBlank: true });
     });
+    return matchedRows;
   }
 
   function metadataEpisodeMatches(current, episode) {

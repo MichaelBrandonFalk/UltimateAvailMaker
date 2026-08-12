@@ -276,6 +276,27 @@ function testMetadataSmartSheetImport() {
   assert.equal(imported.counts.podcasts, 1);
 }
 
+function testMetadataSmartSheetTvSkuSelection() {
+  const imported = Core.importMetadataSmartSheetMatrix([
+    ["Type", "Title", "Series", "Season", "Episode", "PF Premiere Date", "Term End Date", "New SKU", "External ID (Generated)", "Parent External ID", "Season Num", "Episode Num"],
+    ["MOVIE", "Christmas By the Spoonful", "", "", "", "12/17/26", "08/31/29", "", "M_christmas-by-the-spoonful_vortex-media", "", "", ""],
+    ["TVSHOW", "America Reads the Bible Devotionals", "America Reads the Bible Devotionals", "", "", "TBD", "", "c618c1bd-c5de-501d-9c79-5d93693b7bca", "S_america-reads-the-bible-devotionals_christians-enagged", "", "", ""],
+    ["SEASON", "America Reads the Bible Devotionals", "America Reads the Bible Devotionals", "1", "", "TBD", "", "c618c1bd-c5de-501d-9c79-5d93693b7bca", "S_america-reads-the-bible-devotionals_christians-enagged_S1", "", "1", ""],
+    ["EPISODE", "America Reads the Bible Devotionals - When You Need to Let Go", "America Reads the Bible Devotionals", "1", "1", "05/21/26", "", "", "S_america-reads-the-bible-devotionals_christians-enagged_S1_E1", "", "1", "1"]
+  ], {
+    preferredSeriesName: "America Reads the Bible: Devotional Rails",
+    preferredSeriesSku: "c618c1bd-c5de-501d-9c79-5d93693b7bca"
+  });
+
+  assert.equal(imported.movie.title, "Christmas By the Spoonful");
+  assert.equal(imported.tv.seriesName, "America Reads the Bible Devotionals");
+  assert.equal(imported.tv.seriesSku, "c618c1bd-c5de-501d-9c79-5d93693b7bca");
+  assert.equal(imported.tv.startDate, "2026-05-21");
+  assert.equal(imported.tv.endDate, "");
+  assert.equal(imported.tv.episodes.length, 1);
+  assert.equal(imported.tv.episodes[0].startDate, "2026-05-21");
+}
+
 function testWhatsOnTvImport() {
   const imported = Core.importWhatsOnMatrix([
     ["assetNameSDVI", "contentType", "titleVod", "titleSeries", "titleEpisode", "seasonNumber", "episodeAirOrder", "idSku", "idSku_CVP", "vodSeriesId (SKU)", "vodSeriesId (SKU)_CVP", "vodSeasonId (SKU)", "vodSeasonId (SKU)_CVP", "idTMS", "idTMS_series"],
@@ -337,6 +358,7 @@ testYouTubeToStandardConversion();
 testWhatsOnMovieImport();
 testNativeWhatsOnProgramImport();
 testMetadataSmartSheetImport();
+testMetadataSmartSheetTvSkuSelection();
 testWhatsOnTvImport();
 testNativeWhatsOnTvImport();
 

@@ -7,8 +7,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function buildApi() {
   "use strict";
 
-  const VERSION = "V1_7";
-  const VERSION_LABEL = "V1.7";
+  const VERSION = "V1_8";
+  const VERSION_LABEL = "V1.8";
   const NY_TZ = "America/New_York";
   const YT_END_MAX_YMD = "2036-01-02";
 
@@ -799,10 +799,11 @@
     const parsed = parseTable(matrix, METADATA_HEADER_HINTS, "Metadata Smart Sheet", 3);
     const preferredTitle = options && options.preferredTitle;
     const preferredSeriesName = options && options.preferredSeriesName;
+    const preferredSeriesSku = options && options.preferredSeriesSku;
     const movieRows = parsed.rows.filter(isMetadataMovieRow);
     const tvRows = parsed.rows.filter(isMetadataTvRow);
     const selectedMovie = selectMetadataMovieRow(movieRows, preferredTitle);
-    const selectedTvRows = selectMetadataTvRows(tvRows, preferredSeriesName || preferredTitle);
+    const selectedTvRows = selectMetadataTvRows(tvRows, preferredSeriesName || preferredTitle, preferredSeriesSku);
     const tvSeasons = selectedTvRows.length ? tvSeasonsFromMetadataRows(selectedTvRows) : [];
 
     return {
@@ -897,8 +898,18 @@
     return rows[0] || null;
   }
 
-  function selectMetadataTvRows(rows, preferredSeriesName) {
+  function selectMetadataTvRows(rows, preferredSeriesName, preferredSeriesSku) {
     if (!rows.length) return [];
+    const skuKey = skuMatchKey(preferredSeriesSku);
+    if (skuKey) {
+      const skuMatches = rows.filter(function matchesPreferredSku(row) {
+        return skuMatchKey(metadataSku(row)) === skuKey || skuMatchKey(metadataGeneratedId(row)) === skuKey || skuMatchKey(metadataParentId(row)) === skuKey;
+      });
+      const skuSelectedKey = uniqueSeriesKey(skuMatches);
+      if (skuSelectedKey) return tvRowsForSeriesKey(rows, skuSelectedKey);
+      if (skuMatches.length) return [];
+    }
+
     const preferredKey = matchKey(preferredSeriesName);
     let selectedKey = "";
     if (preferredKey) {
@@ -914,11 +925,24 @@
       selectedKey = matchKey(metadataSeriesName(firstNamed) || firstCell(firstNamed, ["title"]));
     }
 
+    return tvRowsForSeriesKey(rows, selectedKey);
+  }
+
+  function tvRowsForSeriesKey(rows, selectedKey) {
     return rows.filter(function keepSelectedSeries(row) {
       const rowKey = matchKey(metadataSeriesName(row) || firstCell(row, ["title"]));
       const titleKey = matchKey(firstCell(row, ["title"]));
       return rowKey === selectedKey || (isMetadataSeriesLevelRow(row) && titleKey === selectedKey);
     });
+  }
+
+  function uniqueSeriesKey(rows) {
+    const keys = [];
+    rows.forEach(function collectKey(row) {
+      const key = matchKey(metadataSeriesName(row) || firstCell(row, ["title"]));
+      if (key && keys.indexOf(key) < 0) keys.push(key);
+    });
+    return keys.length === 1 ? keys[0] : "";
   }
 
   function movieFromMetadataRow(row) {
@@ -1099,6 +1123,10 @@
 
   function matchKey(value) {
     return normalizeKey(value);
+  }
+
+  function skuMatchKey(value) {
+    return clean(value).toLowerCase();
   }
 
   function movieFromWhatsOnRow(row) {
