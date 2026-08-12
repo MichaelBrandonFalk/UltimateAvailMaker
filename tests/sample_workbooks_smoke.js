@@ -94,13 +94,13 @@ if (fs.existsSync(metadataSample)) {
     preferredSeriesName: "Victory Beyond the Cup"
   });
   assert.equal(imported.movie.title, "Christmas By the Spoonful");
-  assert.equal(imported.movie.sku, "M_christmas-by-the-spoonful_vortex-media");
+  assert.equal(imported.movie.sku, "");
   assert.equal(imported.movie.startDate, "2026-12-17");
   assert.equal(imported.movie.endDate, "2029-08-31");
   assert.equal(imported.tv.seriesName, "Victory Beyond the Cup");
   assert.equal(imported.tv.seriesSku, "ccb02e37-18d8-54bc-a93d-e9972b1d23c3");
   assert.equal(imported.tv.seasonNumber, "1");
-  assert.ok(imported.tv.seasonSku);
+  assert.equal(imported.tv.seasonSku, "");
   assert.equal(imported.tv.startDate, "2026-08-13");
   assert.equal(imported.tv.endDate, "2031-08-13");
   assert.ok(imported.tv.episodes.length > 0);
@@ -125,6 +125,7 @@ if (fs.existsSync(metadataSample) && fs.existsSync(americaReadsSample)) {
   assert.equal(metadata.tv.episodes.length, 10);
   assert.equal(metadata.tv.episodes[0].episodeNumber, "1");
   assert.equal(metadata.tv.episodes[0].startDate, "2026-05-21");
+  assert.equal(metadata.tv.episodes[0].episodeSku, "");
 }
 
 if (fs.existsSync(carpoolingSample)) {
