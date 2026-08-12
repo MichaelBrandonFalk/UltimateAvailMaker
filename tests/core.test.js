@@ -164,6 +164,8 @@ function testPastedDateFormats() {
   assert.equal(cell(sheet, "Start"), "2029-06-10");
   assert.equal(cell(sheet, "End"), "2029-06-10");
   assert.equal(Core.coerceToYmd("2029-6-10"), "2029-06-10");
+  assert.equal(Core.coerceToYmd("12/17/26"), "2026-12-17");
+  assert.equal(Core.coerceToYmd("12/31/99"), "2099-12-31");
 }
 
 function testAvailFileNames() {
@@ -247,6 +249,33 @@ function testNativeWhatsOnProgramImport() {
   assert.equal(imported.movie.gracenoteId, "MV000000000001");
 }
 
+function testMetadataSmartSheetImport() {
+  const imported = Core.importMetadataSmartSheetMatrix([
+    ["Type", "Title", "Series", "Season", "Episode", "PF Premiere Date", "Term End Date", "New SKU", "External ID (Generated)", "Parent External ID"],
+    ["MOVIE", "Christmas By the Spoonful", "", "", "", "12/17/26", "08/31/29", "", "M_christmas-by-the-spoonful_vortex-media", ""],
+    ["PODCAST", "Victory Beyond the Cup", "Victory Beyond the Cup", "", "", "08/13/26", "08/13/31", "SERIES_UUID", "ERROR: Unsupported Type: PODCAST", ""],
+    ["SEASON", "Victory Beyond the Cup Season 1", "Victory Beyond the Cup", "1", "", "08/13/26", "08/13/31", "", "SEASON_ID", "SERIES_UUID"],
+    ["EPISODE", "Opening Match", "Victory Beyond the Cup", "1", "1", "08/13/26", "08/13/31", "", "EP_1", "SEASON_ID"],
+    ["EPISODE", "Final Whistle", "Victory Beyond the Cup", "1", "2", "08/20/26", "08/13/31", "EP_UUID_2", "EP_2", "SEASON_ID"]
+  ]);
+
+  assert.equal(imported.movie.title, "Christmas By the Spoonful");
+  assert.equal(imported.movie.sku, "M_christmas-by-the-spoonful_vortex-media");
+  assert.equal(imported.movie.startDate, "2026-12-17");
+  assert.equal(imported.movie.endDate, "2029-08-31");
+  assert.equal(imported.tv.seriesName, "Victory Beyond the Cup");
+  assert.equal(imported.tv.seriesSku, "SERIES_UUID");
+  assert.equal(imported.tv.seasonNumber, "1");
+  assert.equal(imported.tv.seasonSku, "SEASON_ID");
+  assert.equal(imported.tv.startDate, "2026-08-13");
+  assert.equal(imported.tv.endDate, "2031-08-13");
+  assert.equal(imported.tv.episodes.length, 2);
+  assert.equal(imported.tv.episodes[0].episodeNumber, "1");
+  assert.equal(imported.tv.episodes[0].episodeSku, "EP_1");
+  assert.equal(imported.tv.episodes[1].episodeSku, "EP_UUID_2");
+  assert.equal(imported.counts.podcasts, 1);
+}
+
 function testWhatsOnTvImport() {
   const imported = Core.importWhatsOnMatrix([
     ["assetNameSDVI", "contentType", "titleVod", "titleSeries", "titleEpisode", "seasonNumber", "episodeAirOrder", "idSku", "idSku_CVP", "vodSeriesId (SKU)", "vodSeriesId (SKU)_CVP", "vodSeasonId (SKU)", "vodSeasonId (SKU)_CVP", "idTMS", "idTMS_series"],
@@ -307,6 +336,7 @@ testStandardToYouTubeConversion();
 testYouTubeToStandardConversion();
 testWhatsOnMovieImport();
 testNativeWhatsOnProgramImport();
+testMetadataSmartSheetImport();
 testWhatsOnTvImport();
 testNativeWhatsOnTvImport();
 

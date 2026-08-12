@@ -12,6 +12,7 @@ const samples = [
 const whatsonSample = "/Users/brandon.falk/Downloads/Curated for H.E.R..xlsx";
 const ozarkMovieSample = "/Users/brandon.falk/Downloads/An Ozark Mountain Christmas.xlsx";
 const carpoolingSample = "/Users/brandon.falk/Downloads/Carpooling with Jesus Season 1 through 4 .xlsx";
+const metadataSample = "/Users/brandon.falk/Downloads/Master_PureFlix_Metadata_2025-2026 (1).xlsx";
 
 if (!samples.every((samplePath) => fs.existsSync(samplePath))) {
   console.log("sample workbook smoke skipped");
@@ -20,7 +21,8 @@ if (!samples.every((samplePath) => fs.existsSync(samplePath))) {
 
 function matrixFromWorkbook(workbookPath, sheetName) {
   const workbook = XLSX.read(fs.readFileSync(workbookPath), { type: "buffer", cellDates: true });
-  return XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+  const name = sheetName || workbook.SheetNames[0];
+  return XLSX.utils.sheet_to_json(workbook.Sheets[name], {
     header: 1,
     raw: false,
     blankrows: true,
@@ -82,6 +84,25 @@ if (fs.existsSync(ozarkMovieSample)) {
   assert.equal(imported.movie.title, "An Ozark Mountain Christmas");
   assert.equal(imported.movie.sku, "1fe20853-ec64-585c-8d22-26d1eecd207c");
   assert.equal(imported.counts.movies, 1);
+}
+
+if (fs.existsSync(metadataSample)) {
+  const metadataRows = matrixFromWorkbook(metadataSample);
+  const imported = Core.importMetadataSmartSheetMatrix(metadataRows, {
+    preferredTitle: "Christmas By the Spoonful",
+    preferredSeriesName: "Victory Beyond the Cup"
+  });
+  assert.equal(imported.movie.title, "Christmas By the Spoonful");
+  assert.equal(imported.movie.sku, "M_christmas-by-the-spoonful_vortex-media");
+  assert.equal(imported.movie.startDate, "2026-12-17");
+  assert.equal(imported.movie.endDate, "2029-08-31");
+  assert.equal(imported.tv.seriesName, "Victory Beyond the Cup");
+  assert.equal(imported.tv.seriesSku, "ccb02e37-18d8-54bc-a93d-e9972b1d23c3");
+  assert.equal(imported.tv.seasonNumber, "1");
+  assert.ok(imported.tv.seasonSku);
+  assert.equal(imported.tv.startDate, "2026-08-13");
+  assert.equal(imported.tv.endDate, "2031-08-13");
+  assert.ok(imported.tv.episodes.length > 0);
 }
 
 if (fs.existsSync(carpoolingSample)) {

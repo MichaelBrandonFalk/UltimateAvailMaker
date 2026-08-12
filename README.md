@@ -1,6 +1,6 @@
 # Ultimate Avail Maker
 
-Current public version: `V1_6`.
+Current public version: `V1_7`.
 
 Public browser version: https://michaelbrandonfalk.github.io/UltimateAvailMaker/
 
@@ -13,6 +13,7 @@ Ultimate Avail Maker is a browser-based local tool for creating and converting a
 - YouTube-style movie avails.
 - YouTube-style TV episode avails.
 - Optional WhatsOn/Rally-style upload import to populate Movie and TV fields before dates are added.
+- Optional Metadata Smart Sheet import to populate dates and blank fields from a secondary or sole source.
 - Multi-season TV uploads can be exported in one TV avail.
 - Multi-season TV uploads are sorted by season number and each episode row uses the matching season row's `VOD ID SKU`.
 - Preview tables show every output field and can be copied with or without headers.
@@ -24,6 +25,7 @@ Ultimate Avail Maker is a browser-based local tool for creating and converting a
 ## Movie Inputs
 
 - Optional WhatsOn Upload file (`.xlsx`, `.xls`, `.csv`, `.tsv`, or `.txt`)
+- Optional Metadata Smart Sheet file (`.xlsx`, `.xls`, `.csv`, `.tsv`, or `.txt`)
 - Title
 - SKU
 - Start date
@@ -33,6 +35,7 @@ Ultimate Avail Maker is a browser-based local tool for creating and converting a
 ## TV Inputs
 
 - Optional WhatsOn Upload file (`.xlsx`, `.xls`, `.csv`, `.tsv`, or `.txt`)
+- Optional Metadata Smart Sheet file (`.xlsx`, `.xls`, `.csv`, `.tsv`, or `.txt`)
 - Series name
 - Season number
 - Series SKU
@@ -81,6 +84,19 @@ If a WhatsOn upload contains multiple seasons for the same series, all seasons a
 
 For a four-season WhatsOn upload such as `Carpooling with Jesus Season 1 through 4 .xlsx`, the app exports seasons 1 through 4 in order and applies the correct season SKU to each episode row.
 
+## Metadata Smart Sheet Mapping
+
+WhatsOn remains the primary import source when both files are loaded. Metadata Smart Sheet imports fill blank fields, including blank Start Date and End Date fields, from these columns:
+
+- `PF Premiere Date`: Start Date
+- `Term End Date`: End Date
+- `Title`: Movie title, TV series title, or episode title depending on row type
+- `Type`: `Movie` uses the Movie tab. `Series`, `TVSHOW`, `Season`, `Episode`, and `Podcast` use the TV tab. `Podcast` is treated as a series-level row.
+- `New SKU`: Preferred SKU source when present
+- `External ID (Generated)`: SKU fallback when `New SKU` is blank and the value is not an `ERROR:` message
+
+If Metadata Smart Sheet is uploaded without WhatsOn, the app chooses the first matching movie or TV series group it can read and populates as much as possible. If a TV series already has WhatsOn episode rows loaded, Metadata Smart Sheet episode rows are matched by SKU or by season plus episode number, then used to fill blanks. Populated WhatsOn or user-entered fields are left unchanged.
+
 ## YouTube End Date Clamp
 
 YouTube output dates are converted from New York availability dates to UTC timestamps.
@@ -112,13 +128,13 @@ http://localhost:8765/
 Run the versioned build script from this directory:
 
 ```bash
-./build_ultimate_avail_maker_v1_6.sh
+./build_ultimate_avail_maker_v1_7.sh
 ```
 
 The script creates:
 
 ```text
-downloads/Ultimate Avail Maker V1_6.zip
+downloads/Ultimate Avail Maker V1_7.zip
 ```
 
 The script refuses to overwrite an existing ZIP.

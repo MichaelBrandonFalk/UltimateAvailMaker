@@ -147,8 +147,13 @@ h1 {
 
 .panel-tools {
   align-items: end;
-  grid-template-columns: minmax(220px, 360px) auto;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(220px, 360px)) auto;
   justify-content: space-between;
+}
+
+.panel-tools .secondary-action {
+  justify-self: end;
 }
 
 .panel-tools.right-only {
@@ -447,6 +452,14 @@ textarea:focus {
   .convert-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .panel-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .panel-tools .secondary-action {
+    justify-self: start;
+  }
 }
 
 @media (max-width: 560px) {
@@ -459,7 +472,8 @@ textarea:focus {
   }
 
   .form-grid,
-  .convert-grid {
+  .convert-grid,
+  .panel-tools {
     grid-template-columns: 1fr;
   }
 

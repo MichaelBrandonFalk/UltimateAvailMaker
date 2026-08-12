@@ -7,8 +7,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function buildApi() {
   "use strict";
 
-  const VERSION = "V1_6";
-  const VERSION_LABEL = "V1.6";
+  const VERSION = "V1_7";
+  const VERSION_LABEL = "V1.7";
   const NY_TZ = "America/New_York";
   const YT_END_MAX_YMD = "2036-01-02";
 
@@ -126,6 +126,18 @@
       Episode: template("TV", YOUTUBE_TV_GROUPS, YOUTUBE_TV_FIELDS, 92)
     }
   };
+
+  const WHATSON_HEADER_HINTS = [
+    "contenttype", "titlevod", "titleseries", "titleepisode", "idsku", "idskucvp",
+    "vodidsku", "vodseriesidsku", "vodseasonidsku", "parentseries", "title",
+    "season", "episode", "episodenumber", "episodeairorder", "externalreference"
+  ];
+
+  const METADATA_HEADER_HINTS = [
+    "type", "title", "series", "season", "episode", "premieredate", "pfpremieredate",
+    "termenddate", "newsku", "externalidgenerated", "parentexternalid", "seasonnum",
+    "episodenum"
+  ];
 
   function template(sheetName, groupRow, fieldRow, width) {
     const fields = pad(fieldRow, width, "");
@@ -384,6 +396,8 @@
     if (ymdMatch) return ymdFromParts(ymdMatch[1], ymdMatch[2], ymdMatch[3]);
     const mdyMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
     if (mdyMatch) return ymdFromParts(mdyMatch[3], mdyMatch[1], mdyMatch[2]);
+    const shortMdyMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2})$/);
+    if (shortMdyMatch) return ymdFromParts(2000 + Number(shortMdyMatch[3]), shortMdyMatch[1], shortMdyMatch[2]);
     const writtenMatch = s.match(/^([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?[,]?\s+(\d{4})$/i);
     if (writtenMatch) {
       const month = monthNumber(writtenMatch[1]);
@@ -781,7 +795,38 @@
     };
   }
 
-  function parseTable(matrix) {
+  function importMetadataSmartSheetMatrix(matrix, options) {
+    const parsed = parseTable(matrix, METADATA_HEADER_HINTS, "Metadata Smart Sheet", 3);
+    const preferredTitle = options && options.preferredTitle;
+    const preferredSeriesName = options && options.preferredSeriesName;
+    const movieRows = parsed.rows.filter(isMetadataMovieRow);
+    const tvRows = parsed.rows.filter(isMetadataTvRow);
+    const selectedMovie = selectMetadataMovieRow(movieRows, preferredTitle);
+    const selectedTvRows = selectMetadataTvRows(tvRows, preferredSeriesName || preferredTitle);
+    const tvSeasons = selectedTvRows.length ? tvSeasonsFromMetadataRows(selectedTvRows) : [];
+
+    return {
+      headerRowIndex: parsed.headerRowIndex,
+      movie: selectedMovie ? movieFromMetadataRow(selectedMovie) : null,
+      tv: tvSeasons[0] || null,
+      tvSeasons,
+      counts: {
+        rows: parsed.rows.length,
+        movies: movieRows.length,
+        tvRows: tvRows.length,
+        episodes: tvRows.filter(isMetadataEpisodeRow).length,
+        series: tvRows.filter(isMetadataSeriesLevelRow).length,
+        seasons: tvRows.filter(isMetadataSeasonRow).length,
+        podcasts: tvRows.filter(function isPodcast(row) { return metadataType(row) === "podcast"; }).length,
+        tvShows: tvRows.filter(function isTvShow(row) { return metadataType(row) === "tvshow"; }).length
+      }
+    };
+  }
+
+  function parseTable(matrix, headerHints, sourceLabel, minimumScore) {
+    const hints = headerHints || WHATSON_HEADER_HINTS;
+    const label = sourceLabel || "WhatsOn-style";
+    const threshold = minimumScore || 2;
     const values = normalizeMatrix(matrix);
     if (!values.length) throw new Error("Upload is empty.");
     let bestIndex = -1;
@@ -789,7 +834,7 @@
     values.forEach(function scoreRow(row, idx) {
       const headers = row.map(normalizeKey);
       let score = 0;
-      ["contenttype", "titlevod", "titleseries", "titleepisode", "idsku", "idskucvp", "vodidsku", "vodseriesidsku", "vodseasonidsku", "parentseries", "title", "season", "episode", "episodenumber", "episodeairorder", "externalreference"].forEach(function scoreHeader(header) {
+      hints.forEach(function scoreHeader(header) {
         if (headers.indexOf(header) >= 0) score += 1;
       });
       if (score > bestScore) {
@@ -797,7 +842,7 @@
         bestIndex = idx;
       }
     });
-    if (bestIndex < 0 || bestScore < 2) throw new Error("Could not find a WhatsOn-style header row.");
+    if (bestIndex < 0 || bestScore < threshold) throw new Error("Could not find a " + label + " header row.");
 
     const header = values[bestIndex].map(normalizeKey);
     const rows = [];
@@ -813,6 +858,247 @@
     }
     if (!rows.length) throw new Error("Upload has headers but no data rows.");
     return { headerRowIndex: bestIndex, rows };
+  }
+
+  function metadataType(row) {
+    return normalizedCell(row, ["type", "contentType"]);
+  }
+
+  function isMetadataMovieRow(row) {
+    const type = metadataType(row);
+    return type === "movie" || type === "program" || type === "extramovie";
+  }
+
+  function isMetadataTvRow(row) {
+    return isMetadataSeriesLevelRow(row) || isMetadataSeasonRow(row) || isMetadataEpisodeRow(row);
+  }
+
+  function isMetadataSeriesLevelRow(row) {
+    const type = metadataType(row);
+    return type === "series" || type === "tvshow" || type === "show" || type === "podcast";
+  }
+
+  function isMetadataSeasonRow(row) {
+    return metadataType(row) === "season";
+  }
+
+  function isMetadataEpisodeRow(row) {
+    return metadataType(row) === "episode";
+  }
+
+  function selectMetadataMovieRow(rows, preferredTitle) {
+    const preferredKey = matchKey(preferredTitle);
+    if (preferredKey) {
+      const matches = rows.filter(function findPreferredMovie(row) {
+        return matchKey(firstCell(row, ["title"])) === preferredKey;
+      });
+      return matches.length === 1 ? matches[0] : null;
+    }
+    return rows[0] || null;
+  }
+
+  function selectMetadataTvRows(rows, preferredSeriesName) {
+    if (!rows.length) return [];
+    const preferredKey = matchKey(preferredSeriesName);
+    let selectedKey = "";
+    if (preferredKey) {
+      const matching = rows.find(function findPreferredTv(row) {
+        return matchKey(metadataSeriesName(row)) === preferredKey || matchKey(firstCell(row, ["title"])) === preferredKey;
+      });
+      if (!matching) return [];
+      selectedKey = matchKey(metadataSeriesName(matching) || firstCell(matching, ["title"]));
+    } else {
+      const firstNamed = rows.find(function hasSeriesName(row) {
+        return clean(metadataSeriesName(row));
+      }) || rows[0];
+      selectedKey = matchKey(metadataSeriesName(firstNamed) || firstCell(firstNamed, ["title"]));
+    }
+
+    return rows.filter(function keepSelectedSeries(row) {
+      const rowKey = matchKey(metadataSeriesName(row) || firstCell(row, ["title"]));
+      const titleKey = matchKey(firstCell(row, ["title"]));
+      return rowKey === selectedKey || (isMetadataSeriesLevelRow(row) && titleKey === selectedKey);
+    });
+  }
+
+  function movieFromMetadataRow(row) {
+    return {
+      title: firstCell(row, ["title"]),
+      sku: metadataSku(row),
+      startDate: metadataDate(row, ["PF Premiere Date"]),
+      endDate: metadataDate(row, ["Term End Date"]),
+      gracenoteId: ""
+    };
+  }
+
+  function tvSeasonsFromMetadataRows(rows) {
+    const seriesRows = rows.filter(isMetadataSeriesLevelRow);
+    const seasonRows = rows.filter(isMetadataSeasonRow);
+    const episodeRows = uniqueMetadataEpisodeRows(rows.filter(isMetadataEpisodeRow));
+    const groups = [];
+    const addGroupRow = function addGroupRow(row) {
+      const groupSeriesName = metadataSeriesName(row);
+      const groupSeasonNumber = numberCell(row, ["season", "seasonNum"]);
+      let group = groups.find(function findGroup(candidate) {
+        return candidate.seriesName === groupSeriesName && candidate.seasonNumber === groupSeasonNumber;
+      });
+      if (!group) {
+        group = { seriesName: groupSeriesName, seasonNumber: groupSeasonNumber, rows: [] };
+        groups.push(group);
+      }
+      group.rows.push(row);
+    };
+
+    if (episodeRows.length) {
+      episodeRows.forEach(addGroupRow);
+    } else if (seasonRows.length) {
+      seasonRows.forEach(addGroupRow);
+    } else {
+      seriesRows.forEach(addGroupRow);
+    }
+
+    return groups.sort(compareSeasonGroups).map(function buildMetadataSeason(group) {
+      return tvSeasonFromMetadataRows(group.rows, rows, seriesRows, seasonRows);
+    }).filter(Boolean);
+  }
+
+  function tvSeasonFromMetadataRows(groupRows, allRows, seriesRows, seasonRows) {
+    const firstRow = groupRows[0] || {};
+    const firstEpisode = groupRows.find(isMetadataEpisodeRow) || {};
+    const seriesName = firstNonBlank([
+      metadataSeriesName(firstEpisode),
+      metadataSeriesName(firstRow),
+      metadataSeriesName(allRows[0] || {})
+    ]);
+    const seasonNumber = firstNonBlank([
+      numberCell(firstEpisode, ["season", "seasonNum"]),
+      numberCell(firstRow, ["season", "seasonNum"])
+    ]);
+    const seriesRow = matchingMetadataSeriesRow(seriesRows, seriesName) || {};
+    const seasonRow = matchingMetadataSeasonRow(seasonRows, seriesName, seasonNumber) || (isMetadataSeasonRow(firstRow) ? firstRow : {});
+    const startDate = firstMetadataDate([seriesRow, seasonRow, firstEpisode, firstRow], ["PF Premiere Date"]);
+    const endDate = firstMetadataDate([seriesRow, seasonRow, firstEpisode, firstRow], ["Term End Date"]);
+    const seriesSku = firstNonBlank([
+      metadataSku(seriesRow),
+      metadataParentId(seasonRow),
+      metadataParentId(firstEpisode)
+    ]);
+    const seasonSku = firstNonBlank([
+      metadataSku(seasonRow),
+      metadataParentId(firstEpisode)
+    ]);
+    const episodes = groupRows.filter(isMetadataEpisodeRow).map(function mapMetadataEpisode(row) {
+      return {
+        seasonNumber,
+        seasonSku,
+        episodeNumber: metadataEpisodeNumber(row),
+        episodeName: firstCell(row, ["title"]),
+        episodeSku: metadataSku(row),
+        gracenoteEpisodeId: "",
+        startDate: metadataDate(row, ["PF Premiere Date"]) || startDate,
+        endDate: metadataDate(row, ["Term End Date"]) || endDate
+      };
+    }).filter(function keepMetadataEpisode(ep) {
+      return ep.episodeNumber || ep.episodeName || ep.episodeSku || ep.startDate || ep.endDate;
+    }).sort(compareEpisodes);
+
+    return {
+      seriesName,
+      seasonNumber,
+      seriesSku,
+      seasonSku,
+      gracenoteShowId: "",
+      startDate,
+      endDate,
+      episodes
+    };
+  }
+
+  function metadataSeriesName(row) {
+    if (!row) return "";
+    return firstNonBlank([
+      firstCell(row, ["series"]),
+      isMetadataSeriesLevelRow(row) ? firstCell(row, ["title"]) : ""
+    ]);
+  }
+
+  function matchingMetadataSeriesRow(rows, seriesName) {
+    const expected = matchKey(seriesName);
+    if (!expected) return rows[0] || null;
+    const matches = rows.filter(function findSeries(row) {
+      return matchKey(metadataSeriesName(row)) === expected || matchKey(firstCell(row, ["title"])) === expected;
+    });
+    return matches.length === 1 ? matches[0] : null;
+  }
+
+  function matchingMetadataSeasonRow(rows, seriesName, seasonNumber) {
+    const expectedSeries = matchKey(seriesName);
+    const expectedSeason = clean(seasonNumber);
+    const matches = rows.filter(function findSeason(row) {
+      const rowSeries = matchKey(metadataSeriesName(row));
+      const rowSeason = numberCell(row, ["season", "seasonNum"]);
+      return (!expectedSeries || rowSeries === expectedSeries) && (!expectedSeason || rowSeason === expectedSeason);
+    });
+    return matches.length === 1 ? matches[0] : null;
+  }
+
+  function uniqueMetadataEpisodeRows(rows) {
+    const counts = {};
+    rows.forEach(function countRow(row) {
+      const key = metadataEpisodeMatchKey(row);
+      if (key) counts[key] = (counts[key] || 0) + 1;
+    });
+    return rows.filter(function keepUnique(row) {
+      const key = metadataEpisodeMatchKey(row);
+      return !key || counts[key] === 1;
+    });
+  }
+
+  function metadataEpisodeMatchKey(row) {
+    const series = matchKey(metadataSeriesName(row));
+    const season = numberCell(row, ["season", "seasonNum"]);
+    const episode = metadataEpisodeNumber(row);
+    return series && season && episode ? [series, season, episode].join("|") : "";
+  }
+
+  function firstMetadataDate(rows, names) {
+    for (let i = 0; i < rows.length; i += 1) {
+      const value = metadataDate(rows[i], names);
+      if (value) return value;
+    }
+    return "";
+  }
+
+  function metadataDate(row, names) {
+    return coerceToYmd(firstCell(row || {}, names));
+  }
+
+  function metadataSku(row) {
+    return firstNonBlank([
+      firstCell(row || {}, ["New SKU", "VOD ID SKU", "SKU"]),
+      metadataGeneratedId(row)
+    ]);
+  }
+
+  function metadataGeneratedId(row) {
+    return validMetadataId(firstCell(row || {}, ["External ID (Generated)", "External ID", "External reference"]));
+  }
+
+  function metadataParentId(row) {
+    return validMetadataId(firstCell(row || {}, ["Parent External ID"]));
+  }
+
+  function validMetadataId(value) {
+    const id = clean(value);
+    return /^error:/i.test(id) ? "" : id;
+  }
+
+  function metadataEpisodeNumber(row) {
+    return numberCell(row, ["episode", "episodeNum"]);
+  }
+
+  function matchKey(value) {
+    return normalizeKey(value);
   }
 
   function movieFromWhatsOnRow(row) {
@@ -1007,7 +1293,12 @@
   }
 
   function cleanCellValue(value) {
-    return clean(value).replace(/^(\d+)\.0$/, "$1");
+    const text = clean(value).replace(/^(\d+)\.0$/, "$1");
+    return isPlaceholderCell(text) ? "" : text;
+  }
+
+  function isPlaceholderCell(value) {
+    return ["n/a", "na", "none", "null", "tbd", "-"].indexOf(clean(value).toLowerCase()) >= 0;
   }
 
   return {
@@ -1017,6 +1308,7 @@
     buildTvSheet,
     convertMatrix,
     importWhatsOnMatrix,
+    importMetadataSmartSheetMatrix,
     availFileName,
     inspectMatrix,
     suggestColumnWidths,
