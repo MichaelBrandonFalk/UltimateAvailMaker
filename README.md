@@ -1,6 +1,6 @@
 # Ultimate Avail Maker
 
-Current public version: `V1_8`.
+Current public version: `V1_9`.
 
 Public browser version: https://michaelbrandonfalk.github.io/UltimateAvailMaker/
 
@@ -92,8 +92,8 @@ WhatsOn remains the primary import source when both files are loaded. Metadata S
 - `Term End Date`: End Date
 - `Title`: Movie title, TV series title, or episode title depending on row type
 - `Type`: `Movie` uses the Movie tab. `Series`, `TVSHOW`, `Season`, `Episode`, and `Podcast` use the TV tab. `Podcast` is treated as a series-level row.
-- `New SKU`: Preferred SKU source when present
-- `External ID (Generated)`: SKU fallback when `New SKU` is blank and the value is not an `ERROR:` message
+- `New SKU`: Only allowed Metadata Smart Sheet source for movie, series, season, and episode SKU fields
+- `External ID (Generated)`: Ignored
 
 If Metadata Smart Sheet is uploaded without WhatsOn, the app chooses the first matching movie or TV series group it can read and populates as much as possible. If a TV series already has WhatsOn episode rows loaded, Metadata Smart Sheet episode rows are matched by SKU or by season plus episode number, then used to fill blanks. Populated WhatsOn or user-entered fields are left unchanged, and no new episode rows are created alongside WhatsOn rows.
 
@@ -128,13 +128,13 @@ http://localhost:8765/
 Run the versioned build script from this directory:
 
 ```bash
-./build_ultimate_avail_maker_v1_8.sh
+./build_ultimate_avail_maker_v1_9.sh
 ```
 
 The script creates:
 
 ```text
-downloads/Ultimate Avail Maker V1_8.zip
+downloads/Ultimate Avail Maker V1_9.zip
 ```
 
 The script refuses to overwrite an existing ZIP.

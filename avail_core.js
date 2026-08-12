@@ -7,8 +7,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function buildApi() {
   "use strict";
 
-  const VERSION = "V1_8";
-  const VERSION_LABEL = "V1.8";
+  const VERSION = "V1_9";
+  const VERSION_LABEL = "V1.9";
   const NY_TZ = "America/New_York";
   const YT_END_MAX_YMD = "2036-01-02";
 
@@ -135,8 +135,7 @@
 
   const METADATA_HEADER_HINTS = [
     "type", "title", "series", "season", "episode", "premieredate", "pfpremieredate",
-    "termenddate", "newsku", "externalidgenerated", "parentexternalid", "seasonnum",
-    "episodenum"
+    "termenddate", "newsku", "seasonnum", "episodenum"
   ];
 
   function template(sheetName, groupRow, fieldRow, width) {
@@ -903,7 +902,7 @@
     const skuKey = skuMatchKey(preferredSeriesSku);
     if (skuKey) {
       const skuMatches = rows.filter(function matchesPreferredSku(row) {
-        return skuMatchKey(metadataSku(row)) === skuKey || skuMatchKey(metadataGeneratedId(row)) === skuKey || skuMatchKey(metadataParentId(row)) === skuKey;
+        return skuMatchKey(metadataSku(row)) === skuKey;
       });
       const skuSelectedKey = uniqueSeriesKey(skuMatches);
       if (skuSelectedKey) return tvRowsForSeriesKey(rows, skuSelectedKey);
@@ -1002,15 +1001,8 @@
     const seasonRow = matchingMetadataSeasonRow(seasonRows, seriesName, seasonNumber) || (isMetadataSeasonRow(firstRow) ? firstRow : {});
     const startDate = firstMetadataDate([seriesRow, seasonRow, firstEpisode, firstRow], ["PF Premiere Date"]);
     const endDate = firstMetadataDate([seriesRow, seasonRow, firstEpisode, firstRow], ["Term End Date"]);
-    const seriesSku = firstNonBlank([
-      metadataSku(seriesRow),
-      metadataParentId(seasonRow),
-      metadataParentId(firstEpisode)
-    ]);
-    const seasonSku = firstNonBlank([
-      metadataSku(seasonRow),
-      metadataParentId(firstEpisode)
-    ]);
+    const seriesSku = metadataSku(seriesRow);
+    const seasonSku = metadataSku(seasonRow);
     const episodes = groupRows.filter(isMetadataEpisodeRow).map(function mapMetadataEpisode(row) {
       return {
         seasonNumber,
@@ -1098,23 +1090,7 @@
   }
 
   function metadataSku(row) {
-    return firstNonBlank([
-      firstCell(row || {}, ["New SKU", "VOD ID SKU", "SKU"]),
-      metadataGeneratedId(row)
-    ]);
-  }
-
-  function metadataGeneratedId(row) {
-    return validMetadataId(firstCell(row || {}, ["External ID (Generated)", "External ID", "External reference"]));
-  }
-
-  function metadataParentId(row) {
-    return validMetadataId(firstCell(row || {}, ["Parent External ID"]));
-  }
-
-  function validMetadataId(value) {
-    const id = clean(value);
-    return /^error:/i.test(id) ? "" : id;
+    return firstCell(row || {}, ["New SKU", "NewSku"]);
   }
 
   function metadataEpisodeNumber(row) {
