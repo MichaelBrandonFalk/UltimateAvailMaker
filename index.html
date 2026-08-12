@@ -4,16 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Ultimate Avail Maker</title>
-    <link rel="stylesheet" href="styles.css?v=V1_6">
+    <link rel="stylesheet" href="styles.css?v=V1_7">
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.6</span></p>
+          <p class="eyebrow">Ultimate Avail Maker <span data-version>V1.7</span></p>
           <h1>Avails</h1>
         </div>
-        <a class="download-link" href="downloads/Ultimate Avail Maker V1_6.zip" download>Download V1.6</a>
+        <a class="download-link" href="downloads/Ultimate Avail Maker V1_7.zip" download>Download V1.7</a>
       </header>
 
       <main class="workspace">
@@ -28,6 +28,10 @@
             <label class="field file-field" for="movie-import-file">
               <span>WhatsOn Upload</span>
               <input id="movie-import-file" type="file" accept=".xlsx,.xls,.csv,.txt,.tsv">
+            </label>
+            <label class="field file-field" for="movie-metadata-file">
+              <span>Metadata Smart Sheet</span>
+              <input id="movie-metadata-file" type="file" accept=".xlsx,.xls,.csv,.txt,.tsv">
             </label>
             <button type="button" class="secondary-action" data-clear-form="movie">Clear</button>
           </div>
@@ -82,6 +86,10 @@
             <label class="field file-field" for="tv-import-file">
               <span>WhatsOn Upload</span>
               <input id="tv-import-file" type="file" accept=".xlsx,.xls,.csv,.txt,.tsv">
+            </label>
+            <label class="field file-field" for="tv-metadata-file">
+              <span>Metadata Smart Sheet</span>
+              <input id="tv-metadata-file" type="file" accept=".xlsx,.xls,.csv,.txt,.tsv">
             </label>
             <button type="button" class="secondary-action" data-clear-form="tv">Clear</button>
           </div>
@@ -213,8 +221,8 @@
       </main>
     </div>
 
-    <script src="libs/xlsx.full.min.js?v=V1_6"></script>
-    <script src="avail_core.js?v=V1_6"></script>
-    <script src="site_logic.js?v=V1_6"></script>
+    <script src="libs/xlsx.full.min.js?v=V1_7"></script>
+    <script src="avail_core.js?v=V1_7"></script>
+    <script src="site_logic.js?v=V1_7"></script>
   </body>
 </html>

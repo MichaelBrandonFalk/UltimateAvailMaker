@@ -31,15 +31,7 @@
   function wireTabs() {
     $$("[data-tab-button]").forEach(function addTabHandler(button) {
       button.addEventListener("click", function switchTab() {
-        const tab = button.dataset.tabButton;
-        $$("[data-tab-button]").forEach(function update(btn) {
-          const active = btn === button;
-          btn.classList.toggle("active", active);
-          btn.setAttribute("aria-selected", String(active));
-        });
-        $$("[data-tab-panel]").forEach(function update(panel) {
-          panel.hidden = panel.dataset.tabPanel !== tab;
-        });
+        setActiveTab(button.dataset.tabButton);
       });
     });
 
@@ -62,6 +54,17 @@
           setStatus(key, err.message || String(err), "error");
         }
       });
+    });
+  }
+
+  function setActiveTab(tab) {
+    $$("[data-tab-button]").forEach(function update(button) {
+      const active = button.dataset.tabButton === tab;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+    });
+    $$("[data-tab-panel]").forEach(function update(panel) {
+      panel.hidden = panel.dataset.tabPanel !== tab;
     });
   }
 
@@ -118,6 +121,10 @@
       }
     });
 
+    $("#movie-metadata-file").addEventListener("change", async function importMovieMetadata(event) {
+      await handleMetadataImport(event, "movie");
+    });
+
     $$("[data-build-movie]").forEach(function addBuildHandler(button) {
       button.addEventListener("click", function buildMovie() {
         try {
@@ -165,6 +172,10 @@
       } catch (err) {
         setStatus("tv", err.message || String(err), "error");
       }
+    });
+
+    $("#tv-metadata-file").addEventListener("change", async function importTvMetadata(event) {
+      await handleMetadataImport(event, "tv");
     });
 
     $("#apply-tv-start").addEventListener("click", function applyStart() {
@@ -294,6 +305,7 @@
     if (key === "movie") {
       $("#movie-form").reset();
       $("#movie-import-file").value = "";
+      $("#movie-metadata-file").value = "";
       sourceNames.movie = "";
       clearPreviewState("movie");
       setStatus("movie", "");
@@ -303,6 +315,7 @@
     if (key === "tv") {
       $("#tv-form").reset();
       $("#tv-import-file").value = "";
+      $("#tv-metadata-file").value = "";
       $("#episode-paste").value = "";
       $("#episode-body").replaceChildren();
       sourceNames.tv = "";
@@ -427,6 +440,42 @@
     return picker && picker.dataset.dateTarget ? document.getElementById(picker.dataset.dateTarget) : null;
   }
 
+  async function handleMetadataImport(event, preferredArea) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const options = preferredArea === "tv"
+      ? { preferredSeriesName: $("#series-name").value }
+      : { preferredTitle: $("#movie-title").value };
+
+    try {
+      const imported = await importMetadataFile(file, options);
+      const target = preferredArea === "movie" && imported.movie
+        ? "movie"
+        : preferredArea === "tv" && imported.tv
+          ? "tv"
+          : imported.movie
+            ? "movie"
+            : imported.tv
+              ? "tv"
+              : "";
+      if (!target) throw new Error("No Movie or TV metadata rows found in upload.");
+      if (!sourceNames[target]) sourceNames[target] = baseFileName(file.name);
+      if (target !== preferredArea) setStatus(preferredArea, "");
+
+      if (target === "movie") {
+        setActiveTab("movie");
+        fillForm($("#movie-form"), imported.movie, { fillOnlyBlank: true });
+        setStatus("movie", "Loaded Metadata Smart Sheet " + file.name + ": movie dates and blank fields populated.", "ok");
+      } else {
+        setActiveTab("tv");
+        applyMetadataTv(imported.tv, imported.tvSeasons || []);
+        setStatus("tv", "Loaded Metadata Smart Sheet " + file.name + ": " + (imported.tvSeasons || []).length + " season group(s), " + imported.counts.episodes + " episode row(s).", "ok");
+      }
+    } catch (err) {
+      setStatus(preferredArea, err.message || String(err), "error");
+    }
+  }
+
   async function importWhatsOnFile(file) {
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
@@ -443,11 +492,109 @@
     throw lastError || new Error("Could not read the upload.");
   }
 
-  function fillForm(form, values) {
+  async function importMetadataFile(file, options) {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
+    let lastError = null;
+    for (let i = 0; i < workbook.SheetNames.length; i += 1) {
+      const sheetName = workbook.SheetNames[i];
+      try {
+        const imported = Core.importMetadataSmartSheetMatrix(sheetToMatrix(workbook.Sheets[sheetName]), options || {});
+        if (imported.movie || imported.tv) return imported;
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError || new Error("Could not read the Metadata Smart Sheet.");
+  }
+
+  function applyMetadataTv(tv, tvSeasons) {
+    const seasons = tvSeasons.length ? tvSeasons : [tv];
+    fillForm($("#tv-form"), seasons[0], { fillOnlyBlank: true });
+    const episodes = seasons.flatMap(function flattenSeason(season) {
+      return (season.episodes || []).map(function addSeasonDefaults(episode) {
+        return Object.assign({}, episode, {
+          seasonNumber: episode.seasonNumber || season.seasonNumber,
+          seasonSku: episode.seasonSku || season.seasonSku,
+          startDate: episode.startDate || season.startDate,
+          endDate: episode.endDate || season.endDate
+        });
+      });
+    });
+
+    if (!episodes.length) return;
+    if (episodeRowsAreBlank()) {
+      $("#episode-body").replaceChildren();
+      episodes.forEach(function addImportedEpisode(episode) {
+        addEpisodeRow(episode);
+      });
+      return;
+    }
+    mergeMetadataEpisodes(episodes);
+  }
+
+  function mergeMetadataEpisodes(episodes) {
+    const used = new Set();
+    $$("tr", $("#episode-body")).forEach(function mergeRow(row) {
+      const current = episodeRowObject(row);
+      const matchIndex = episodes.findIndex(function findMatch(episode, index) {
+        return !used.has(index) && metadataEpisodeMatches(current, episode);
+      });
+      if (matchIndex < 0) return;
+      used.add(matchIndex);
+      setEpisodeRowValues(row, episodes[matchIndex], { fillOnlyBlank: true });
+    });
+  }
+
+  function metadataEpisodeMatches(current, episode) {
+    const currentSeason = cleanText(current.seasonNumber);
+    const episodeSeason = cleanText(episode.seasonNumber);
+    const currentEpisode = cleanText(current.episodeNumber);
+    const episodeNumber = cleanText(episode.episodeNumber);
+    const currentSku = cleanText(current.episodeSku);
+    const episodeSku = cleanText(episode.episodeSku);
+    if (currentSku && episodeSku && currentSku === episodeSku) return true;
+    return currentSeason && episodeSeason && currentSeason === episodeSeason && currentEpisode && episodeNumber && currentEpisode === episodeNumber;
+  }
+
+  function episodeRowsAreBlank() {
+    const rows = readEpisodeRows();
+    return !rows.length || rows.every(function isBlank(row) {
+      return Object.keys(row).every(function blankField(key) {
+        return !cleanText(row[key]);
+      });
+    });
+  }
+
+  function episodeRowObject(row) {
+    const out = {};
+    $$("[data-episode-field]", row).forEach(function collect(input) {
+      out[input.dataset.episodeField] = input.value.trim();
+    });
+    return out;
+  }
+
+  function setEpisodeRowValues(row, values, options) {
+    const opts = options || {};
+    const overwriteFields = opts.overwriteFields || [];
+    Object.entries(values || {}).forEach(function setValue(entry) {
+      const input = $('[data-episode-field="' + entry[0] + '"]', row);
+      if (!input || entry[1] === undefined || entry[1] === null) return;
+      const shouldOverwrite = overwriteFields.indexOf(entry[0]) >= 0;
+      if (opts.fillOnlyBlank && !shouldOverwrite && cleanText(input.value)) return;
+      input.value = isDateInput(input) ? (Core.coerceToYmd(entry[1]) || entry[1]) : entry[1];
+    });
+  }
+
+  function fillForm(form, values, options) {
+    const opts = options || {};
+    const overwriteFields = opts.overwriteFields || [];
     Object.entries(values || {}).forEach(function setValue(entry) {
       if (entry[0] === "episodes") return;
       const field = $('[name="' + entry[0] + '"]', form);
       if (field && entry[1] !== undefined && entry[1] !== null) {
+        const shouldOverwrite = overwriteFields.indexOf(entry[0]) >= 0;
+        if (opts.fillOnlyBlank && !shouldOverwrite && cleanText(field.value)) return;
         field.value = isDateInput(field) ? (Core.coerceToYmd(entry[1]) || entry[1]) : entry[1];
         if (isDateInput(field)) syncDatePickerFromInput(field);
       }
@@ -590,6 +737,10 @@
 
   function baseFileName(value) {
     return String(value || "").replace(/\.[^.\\/]+$/, "");
+  }
+
+  function cleanText(value) {
+    return String(value === null || value === undefined ? "" : value).trim();
   }
 
   function titleFromSheet(sheet) {
