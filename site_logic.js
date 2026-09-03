@@ -103,7 +103,21 @@
         input.value = picker.value;
         normalizeAndSyncDateInput(input);
       });
+      picker.addEventListener("click", function pickerClicked() {
+        openDatePicker(picker);
+      });
     });
+  }
+
+  function openDatePicker(picker) {
+    const input = pickerTarget(picker);
+    if (input) picker.value = Core.coerceToYmd(input.value) || "";
+    if (typeof picker.showPicker !== "function") return;
+    try {
+      picker.showPicker();
+    } catch (err) {
+      // Some browsers reject showPicker outside direct user activation.
+    }
   }
 
   function wireMovie() {
