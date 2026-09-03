@@ -1,6 +1,6 @@
 # Ultimate Avail Maker
 
-Current public version: `V1_9`.
+Current public version: `V1_10`.
 
 Public browser version: https://michaelbrandonfalk.github.io/UltimateAvailMaker/
 
@@ -18,7 +18,7 @@ Ultimate Avail Maker is a browser-based local tool for creating and converting a
 - Multi-season TV uploads are sorted by season number and each episode row uses the matching season row's `VOD ID SKU`.
 - Preview tables show every output field and can be copied with or without headers.
 - Clear buttons reset each tab's inputs, upload selection, status, and preview.
-- Movie and TV top-level Start Date and End Date fields include calendar pickers that populate the adjacent date field.
+- Movie and TV top-level Start Date and End Date fields include full-click calendar buttons that populate the adjacent date field.
 - Standard EMA to YouTube conversion from pasted rows or uploaded `.xlsx`, `.xls`, `.csv`, `.tsv`, or `.txt` files.
 - YouTube to Standard EMA conversion is also supported for matching rows.
 
@@ -128,13 +128,13 @@ http://localhost:8765/
 Run the versioned build script from this directory:
 
 ```bash
-./build_ultimate_avail_maker_v1_9.sh
+./build_ultimate_avail_maker_v1_10.sh
 ```
 
 The script creates:
 
 ```text
-downloads/Ultimate Avail Maker V1_9.zip
+downloads/Ultimate Avail Maker V1_10.zip
 ```
 
 The script refuses to overwrite an existing ZIP.
