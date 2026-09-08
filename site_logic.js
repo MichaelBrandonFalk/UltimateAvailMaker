@@ -121,6 +121,22 @@
   }
 
   function wireMovie() {
+    $("#add-movie-row").addEventListener("click", function addBlankMovieRow() {
+      if (movieRowsAreBlank()) {
+        const current = formObject($("#movie-form"));
+        if (movieObjectHasData(current)) addMovieRow(current);
+      }
+      addMovieRow();
+    });
+
+    $("#apply-movie-start").addEventListener("click", function applyMovieStart() {
+      applyMovieDate("startDate", $("#movie-start").value);
+    });
+
+    $("#apply-movie-end").addEventListener("click", function applyMovieEnd() {
+      applyMovieDate("endDate", $("#movie-end").value);
+    });
+
     $("#movie-import-file").addEventListener("change", async function importMovie(event) {
       await handleWhatsOnImport(event, "movie");
     });
@@ -134,8 +150,9 @@
         try {
           const target = button.dataset.buildMovie;
           const input = formObject($("#movie-form"));
+          input.movies = readMovieRows();
           const sheet = Core.buildMovieSheet(input, target);
-          const filename = fileName(target, sourceNames.movie || input.title || "Movie");
+          const filename = fileName(target, sourceNames.movie || input.title || firstMovieTitle(input.movies) || "Movie");
           downloadWorkbook([sheet], filename);
           showPreview("movie", sheet);
           setStatus("movie", "Created " + filename + ".", "ok");
@@ -287,6 +304,8 @@
       $("#movie-form").reset();
       $("#movie-import-file").value = "";
       $("#movie-metadata-file").value = "";
+      $("#movie-body").replaceChildren();
+      showMovieList(false);
       sourceNames.movie = "";
       clearPreviewState("movie");
       setStatus("movie", "");
@@ -324,6 +343,112 @@
     previewSheets[key] = null;
     $("#" + key + "-preview").replaceChildren();
     updateCopyButtons(key);
+  }
+
+  function addMovieRow(values) {
+    const row = document.createElement("tr");
+    row.innerHTML = [
+      '<td><input data-movie-field="title"></td>',
+      '<td><input data-movie-field="sku"></td>',
+      '<td><input data-movie-field="gracenoteId"></td>',
+      '<td><input data-movie-field="startDate" data-date-input placeholder="yyyy-mm-dd"></td>',
+      '<td><input data-movie-field="endDate" data-date-input placeholder="yyyy-mm-dd"></td>',
+      '<td><button type="button" class="icon-action" aria-label="Remove row">×</button></td>'
+    ].join("");
+
+    Object.entries(values || {}).forEach(function setValue(entry) {
+      const input = $('[data-movie-field="' + entry[0] + '"]', row);
+      if (input) input.value = isDateInput(input) ? (Core.coerceToYmd(entry[1]) || entry[1]) : entry[1];
+    });
+
+    $(".icon-action", row).addEventListener("click", function removeRow() {
+      row.remove();
+      if (!$("#movie-body").children.length) showMovieList(false);
+    });
+
+    $("#movie-body").append(row);
+    showMovieList(true);
+  }
+
+  function setMovieRows(movies, showList) {
+    $("#movie-body").replaceChildren();
+    if (showList) {
+      (movies || []).forEach(function addImportedMovie(movie) {
+        addMovieRow(movie);
+      });
+    }
+    showMovieList(!!showList && !!$("#movie-body").children.length);
+  }
+
+  function showMovieList(show) {
+    const surface = $("#movie-list-surface");
+    if (surface) surface.hidden = !show;
+  }
+
+  function applyMovieDate(fieldName, value) {
+    const normalized = Core.coerceToYmd(value);
+    if (!normalized) {
+      setStatus("movie", fieldName === "startDate" ? "Choose a valid Start Date first." : "Choose a valid End Date first.", "error");
+      return;
+    }
+    if (movieRowsAreBlank()) {
+      setStatus("movie", "Upload or add movie rows before applying a date to the list.", "error");
+      return;
+    }
+    $$('[data-movie-field="' + fieldName + '"]', $("#movie-body")).forEach(function setDate(input) {
+      input.value = normalized;
+    });
+    const source = fieldName === "startDate" ? $("#movie-start") : $("#movie-end");
+    if (source) {
+      source.value = normalized;
+      syncDatePickerFromInput(source);
+    }
+    setStatus("movie", (fieldName === "startDate" ? "Start" : "End") + " date applied to every movie row.", "ok");
+  }
+
+  function readMovieRows() {
+    return $$("tr", $("#movie-body")).map(function mapRow(row) {
+      return movieRowObject(row);
+    });
+  }
+
+  function movieRowsAreBlank() {
+    const rows = readMovieRows();
+    return !rows.length || rows.every(function isBlank(row) {
+      return !movieObjectHasData(row);
+    });
+  }
+
+  function movieObjectHasData(movie) {
+    return ["title", "sku", "gracenoteId", "startDate", "endDate"].some(function hasField(key) {
+      return cleanText(movie && movie[key]);
+    });
+  }
+
+  function movieRowObject(row) {
+    const out = {};
+    $$("[data-movie-field]", row).forEach(function collect(input) {
+      const raw = input.value.trim();
+      out[input.dataset.movieField] = isDateInput(input) ? (Core.coerceToYmd(raw) || raw) : raw;
+    });
+    return out;
+  }
+
+  function setMovieRowValues(row, values, options) {
+    const opts = options || {};
+    Object.entries(values || {}).forEach(function setValue(entry) {
+      const input = $('[data-movie-field="' + entry[0] + '"]', row);
+      if (!input || entry[1] === undefined || entry[1] === null) return;
+      if (opts.fillOnlyBlank && cleanText(input.value)) return;
+      input.value = isDateInput(input) ? (Core.coerceToYmd(entry[1]) || entry[1]) : entry[1];
+    });
+  }
+
+  function firstMovieTitle(movies) {
+    const movie = (movies || []).find(function findTitle(row) {
+      return cleanText(row.title);
+    });
+    return movie ? movie.title : "";
   }
 
   function addEpisodeRow(values) {
@@ -444,8 +569,7 @@
       if (target === "movie") {
         sourceNames.movie = baseFileName(file.name);
         setActiveTab("movie");
-        fillForm($("#movie-form"), imported.movie);
-        setStatus("movie", "Loaded " + file.name + ": " + imported.counts.movies + " movie row(s). Review fields and add dates before exporting.", "ok");
+        applyWhatsOnMovie(imported, file.name);
       } else {
         sourceNames.tv = baseFileName(file.name);
         setActiveTab("tv");
@@ -462,8 +586,9 @@
     const hasTvContext = tvHasExistingRecords();
     const hasMovieContext = !hasTvContext && movieHasExistingRecords();
     const hasTvRows = !episodeRowsAreBlank();
+    const hasMovieRows = !movieRowsAreBlank();
     const statusArea = hasTvContext ? "tv" : hasMovieContext ? "movie" : preferredArea;
-    const options = metadataOptions(preferredArea, hasTvContext, hasMovieContext);
+    const options = metadataOptions(preferredArea, hasTvContext, hasMovieContext, hasMovieRows);
 
     try {
       const imported = await importMetadataFile(file, options);
@@ -477,8 +602,13 @@
 
       if (target === "movie") {
         setActiveTab("movie");
-        fillForm($("#movie-form"), imported.movie, { fillOnlyBlank: true });
-        setStatus("movie", "Loaded Metadata Smart Sheet " + file.name + ": movie dates and blank fields populated.", "ok");
+        const result = applyMetadataMovie(imported.movie, imported.movies || [], { allowCreateRows: !hasMovieRows && !hasMovieContext });
+        const message = hasMovieRows
+          ? "Loaded Metadata Smart Sheet " + file.name + ": " + result.matchedRows + " existing movie row(s) matched; no new rows created."
+          : result.createdRows > 1
+            ? "Loaded Metadata Smart Sheet " + file.name + ": " + result.createdRows + " movie row(s)."
+            : "Loaded Metadata Smart Sheet " + file.name + ": movie dates and blank fields populated.";
+        setStatus("movie", message, "ok");
       } else {
         setActiveTab("tv");
         const result = applyMetadataTv(imported.tv, imported.tvSeasons || [], { allowCreateRows: !hasTvRows });
@@ -494,10 +624,10 @@
 
   function metadataTarget(imported, preferredArea, hasTvContext, hasMovieContext) {
     if (hasTvContext) return imported.tv ? "tv" : "";
-    if (hasMovieContext) return imported.movie ? "movie" : "";
-    if (preferredArea === "movie" && imported.movie) return "movie";
+    if (hasMovieContext) return imported.movie || (imported.movies && imported.movies.length) ? "movie" : "";
+    if (preferredArea === "movie" && (imported.movie || (imported.movies && imported.movies.length))) return "movie";
     if (preferredArea === "tv" && imported.tv) return "tv";
-    if (imported.movie) return "movie";
+    if (imported.movie || (imported.movies && imported.movies.length)) return "movie";
     return imported.tv ? "tv" : "";
   }
 
@@ -507,6 +637,14 @@
       : kind === "metadata" ? "tv-metadata-file" : "tv-import-file";
     const input = document.getElementById(id);
     if (input) input.value = "";
+  }
+
+  function applyWhatsOnMovie(imported, fileName) {
+    if (!imported.movie) throw new Error("No movie rows found in upload.");
+    const movies = imported.movies && imported.movies.length ? imported.movies : [imported.movie];
+    fillForm($("#movie-form"), movies[0]);
+    setMovieRows(movies, movies.length > 1);
+    setStatus("movie", "Loaded " + fileName + ": " + movies.length + " movie row(s). Review fields and add dates before exporting.", "ok");
   }
 
   function applyWhatsOnTv(imported, fileName) {
@@ -528,13 +666,14 @@
     setStatus("tv", "Loaded " + fileName + ": " + seasons.length + " season(s), " + episodeCount + " episode row(s). Review fields and add dates before exporting.", "ok");
   }
 
-  function metadataOptions(preferredArea, hasTvContext, hasMovieContext) {
+  function metadataOptions(preferredArea, hasTvContext, hasMovieContext, hasMovieRows) {
     if (hasTvContext || preferredArea === "tv") {
       return {
         preferredSeriesName: $("#series-name").value,
         preferredSeriesSku: $("#series-sku").value
       };
     }
+    if (hasMovieRows) return {};
     if (hasMovieContext || preferredArea === "movie") return { preferredTitle: $("#movie-title").value };
     return {};
   }
@@ -553,7 +692,8 @@
       || ["movie-title", "movie-sku", "movie-start", "movie-end", "movie-gracenote"].some(function hasValue(id) {
         const input = document.getElementById(id);
         return input && cleanText(input.value);
-      });
+      })
+      || !movieRowsAreBlank();
   }
 
   async function importWhatsOnFile(file) {
@@ -564,7 +704,7 @@
       const sheetName = workbook.SheetNames[i];
       try {
         const imported = Core.importWhatsOnMatrix(sheetToMatrix(workbook.Sheets[sheetName]));
-        if (imported.movie || imported.tv) return imported;
+        if (imported.movie || (imported.movies && imported.movies.length) || imported.tv) return imported;
       } catch (err) {
         lastError = err;
       }
@@ -580,12 +720,61 @@
       const sheetName = workbook.SheetNames[i];
       try {
         const imported = Core.importMetadataSmartSheetMatrix(sheetToMatrix(workbook.Sheets[sheetName]), options || {});
-        if (imported.movie || imported.tv) return imported;
+        if (imported.movie || (imported.movies && imported.movies.length) || imported.tv) return imported;
       } catch (err) {
         lastError = err;
       }
     }
     throw lastError || new Error("Could not read the Metadata Smart Sheet.");
+  }
+
+  function applyMetadataMovie(movie, movies, options) {
+    const allowCreateRows = !options || options.allowCreateRows !== false;
+    const hasExistingRows = !movieRowsAreBlank();
+    const sourceMovies = hasExistingRows || allowCreateRows
+      ? (movies && movies.length ? movies : movie ? [movie] : [])
+      : (movie ? [movie] : movies || []);
+    const movieRows = sourceMovies.filter(movieObjectHasData);
+    if (!movieRows.length) return { createdRows: 0, matchedRows: 0 };
+
+    if (hasExistingRows) {
+      return { createdRows: 0, matchedRows: mergeMetadataMovies(movieRows) };
+    }
+
+    if (movieRows.length > 1 && allowCreateRows) {
+      fillForm($("#movie-form"), movieRows[0], { fillOnlyBlank: true });
+      setMovieRows(movieRows, true);
+      return { createdRows: movieRows.length, matchedRows: 0 };
+    }
+
+    fillForm($("#movie-form"), movieRows[0], { fillOnlyBlank: true });
+    return { createdRows: 0, matchedRows: 0 };
+  }
+
+  function mergeMetadataMovies(movies) {
+    const used = new Set();
+    let matchedRows = 0;
+    $$("tr", $("#movie-body")).forEach(function mergeRow(row) {
+      const current = movieRowObject(row);
+      const matchIndex = movies.findIndex(function findMatch(movie, index) {
+        return !used.has(index) && metadataMovieMatches(current, movie);
+      });
+      if (matchIndex < 0) return;
+      used.add(matchIndex);
+      matchedRows += 1;
+      setMovieRowValues(row, movies[matchIndex], { fillOnlyBlank: true });
+    });
+    return matchedRows;
+  }
+
+  function metadataMovieMatches(current, movie) {
+    const currentSku = cleanText(current.sku);
+    const movieSku = cleanText(movie.sku);
+    if (currentSku && movieSku && currentSku === movieSku) return true;
+    if (currentSku || movieSku) return false;
+    const currentTitle = matchText(current.title);
+    const movieTitle = matchText(movie.title);
+    return !!(currentTitle && movieTitle && currentTitle === movieTitle);
   }
 
   function applyMetadataTv(tv, tvSeasons, options) {
@@ -826,6 +1015,10 @@
 
   function cleanText(value) {
     return String(value === null || value === undefined ? "" : value).trim();
+  }
+
+  function matchText(value) {
+    return cleanText(value).toLowerCase().replace(/[^a-z0-9]+/g, "");
   }
 
   function titleFromSheet(sheet) {

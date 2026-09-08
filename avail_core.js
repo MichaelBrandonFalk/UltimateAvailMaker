@@ -7,8 +7,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function buildApi() {
   "use strict";
 
-  const VERSION = "V1_10";
-  const VERSION_LABEL = "V1.10";
+  const VERSION = "V1_11";
+  const VERSION_LABEL = "V1.11";
   const NY_TZ = "America/New_York";
   const YT_END_MAX_YMD = "2036-01-02";
 
@@ -201,21 +201,22 @@
 
   function buildMovieSheet(input, target) {
     const targetKey = canonicalTarget(target);
-    const title = required(input.title, "Title");
-    const sku = required(input.sku, "SKU");
-    const start = normalizeYmd(input.startDate, "Start date");
-    const end = normalizeYmd(input.endDate, "End date");
-    const gracenoteId = clean(input.gracenoteId);
+    const movies = normalizeMovies(input || {});
     const tmpl = getTemplate(targetKey, "Movie");
-    const values = targetKey === "standard"
-      ? standardMovieValues(title, sku, start, end, gracenoteId)
-      : youtubeMovieValues(title, sku, start, end, gracenoteId);
+    const rows = headersFor(tmpl);
+
+    movies.forEach(function addMovie(movie) {
+      const values = targetKey === "standard"
+        ? standardMovieValues(movie.title, movie.sku, movie.startDate, movie.endDate, movie.gracenoteId)
+        : youtubeMovieValues(movie.title, movie.sku, movie.startDate, movie.endDate, movie.gracenoteId);
+      rows.push(makeRow(tmpl, values));
+    });
 
     return {
       sheetName: tmpl.sheetName,
       target: targetKey,
       workType: "Movie",
-      rows: headersFor(tmpl).concat([makeRow(tmpl, values)])
+      rows
     };
   }
 
@@ -349,6 +350,49 @@
     return out;
   }
 
+  function normalizeMovies(input) {
+    const fallbackStart = optionalYmd(input.startDate, "Start date");
+    const fallbackEnd = optionalYmd(input.endDate, "End date");
+    const fallbackGracenoteId = clean(input.gracenoteId);
+    const rawMovies = Array.isArray(input.movies) ? input.movies : [];
+    const movies = rawMovies
+      .map(function normalizeMovie(movie, idx) {
+        const rowName = "Movie row " + (idx + 1);
+        return {
+          title: clean(movie.title),
+          sku: clean(movie.sku),
+          gracenoteId: clean(movie.gracenoteId) || fallbackGracenoteId,
+          startDate: optionalYmd(movie.startDate, rowName + " start date") || fallbackStart,
+          endDate: optionalYmd(movie.endDate, rowName + " end date") || fallbackEnd
+        };
+      })
+      .filter(movieHasData);
+
+    if (!movies.length) {
+      movies.push({
+        title: clean(input.title),
+        sku: clean(input.sku),
+        gracenoteId: fallbackGracenoteId,
+        startDate: fallbackStart,
+        endDate: fallbackEnd
+      });
+    }
+
+    movies.forEach(function validateMovie(movie, idx) {
+      const rowName = movies.length > 1 ? "Movie row " + (idx + 1) : "";
+      if (!movie.title) throw new Error(rowName ? rowName + " needs a title." : "Title is required.");
+      if (!movie.sku) throw new Error(rowName ? rowName + " needs a SKU." : "SKU is required.");
+      if (!movie.startDate) throw new Error(rowName ? rowName + " needs a start date." : "Start date must be a valid date.");
+      if (!movie.endDate) throw new Error(rowName ? rowName + " needs an end date." : "End date must be a valid date.");
+    });
+
+    return movies;
+  }
+
+  function movieHasData(movie) {
+    return !!(movie.title || movie.sku || movie.gracenoteId || movie.startDate || movie.endDate);
+  }
+
   function normalizeEpisodes(episodes, fallbackStart, fallbackEnd, fallbackSeasonNumber, fallbackSeasonSku) {
     const out = episodes
       .map(function normalizeEpisode(ep) {
@@ -383,6 +427,14 @@
 
   function normalizeYmd(value, label) {
     const ymd = coerceToYmd(value);
+    if (!ymd) throw new Error(label + " must be a valid date.");
+    return ymd;
+  }
+
+  function optionalYmd(value, label) {
+    const raw = clean(value);
+    if (!raw) return "";
+    const ymd = coerceToYmd(raw);
     if (!ymd) throw new Error(label + " must be a valid date.");
     return ymd;
   }
@@ -779,9 +831,12 @@
 
     const tvSeasons = episodeRows.length ? tvSeasonsFromWhatsOnRows(episodeRows, seriesRows, seasonRows) : [];
 
+    const movies = movieRows.map(movieFromWhatsOnRow);
+
     return {
       headerRowIndex: parsed.headerRowIndex,
-      movie: movieRows.length ? movieFromWhatsOnRow(movieRows[0]) : null,
+      movie: movies[0] || null,
+      movies,
       tv: tvSeasons[0] || null,
       tvSeasons,
       counts: {
@@ -802,12 +857,14 @@
     const movieRows = parsed.rows.filter(isMetadataMovieRow);
     const tvRows = parsed.rows.filter(isMetadataTvRow);
     const selectedMovie = selectMetadataMovieRow(movieRows, preferredTitle);
+    const movies = movieRows.map(movieFromMetadataRow);
     const selectedTvRows = selectMetadataTvRows(tvRows, preferredSeriesName || preferredTitle, preferredSeriesSku);
     const tvSeasons = selectedTvRows.length ? tvSeasonsFromMetadataRows(selectedTvRows) : [];
 
     return {
       headerRowIndex: parsed.headerRowIndex,
       movie: selectedMovie ? movieFromMetadataRow(selectedMovie) : null,
+      movies,
       tv: tvSeasons[0] || null,
       tvSeasons,
       counts: {

@@ -48,6 +48,40 @@ function testMovieYouTube() {
   assert.equal(cell(sheet, "End"), "2036-01-03T04:59:59Z");
 }
 
+function testMovieMultipleRows() {
+  const sheet = Core.buildMovieSheet({
+    startDate: "10/1/2026",
+    endDate: "10/1/2029",
+    movies: [
+      {
+        title: "First Movie",
+        sku: "M_FIRST",
+        gracenoteId: "MVFIRST"
+      },
+      {
+        title: "Second Movie",
+        sku: "M_SECOND",
+        gracenoteId: "MVSECOND",
+        startDate: "October 2, 2026",
+        endDate: "2029-10-02"
+      }
+    ]
+  }, "standard");
+
+  assert.equal(sheet.sheetName, "Movie");
+  assert.equal(sheet.rows.length, 5);
+  assert.equal(cell(sheet, "TitleInternalAlias", 3), "First Movie");
+  assert.equal(cell(sheet, "ALID", 3), "M_FIRST");
+  assert.equal(cell(sheet, "Start", 3), "2026-10-01");
+  assert.equal(cell(sheet, "End", 3), "2029-10-01");
+  assert.equal(cell(sheet, "RetailerID1", 3), "MVFIRST");
+  assert.equal(cell(sheet, "TitleInternalAlias", 4), "Second Movie");
+  assert.equal(cell(sheet, "ALID", 4), "M_SECOND");
+  assert.equal(cell(sheet, "Start", 4), "2026-10-02");
+  assert.equal(cell(sheet, "End", 4), "2029-10-02");
+  assert.equal(cell(sheet, "RetailerID1", 4), "MVSECOND");
+}
+
 function testTvStandardAndYouTube() {
   const input = {
     seriesName: "Crossroad Springs",
@@ -249,6 +283,21 @@ function testNativeWhatsOnProgramImport() {
   assert.equal(imported.movie.gracenoteId, "MV000000000001");
 }
 
+function testNativeWhatsOnMultipleMovieImport() {
+  const imported = Core.importWhatsOnMatrix([
+    ["External reference", "Content type", "VOD ID SKU", "Parent series", "Title", "Season", "Episode #", "TMSNumber"],
+    ["MvieRef1", "Program", "MOVIE-SKU-1", "", "First Native Movie", "", "", "MV000000000001"],
+    ["MvieRef2", "Program", "MOVIE-SKU-2", "", "Second Native Movie", "", "", "MV000000000002"]
+  ]);
+
+  assert.equal(imported.counts.movies, 2);
+  assert.equal(imported.movies.length, 2);
+  assert.equal(imported.movie.title, "First Native Movie");
+  assert.equal(imported.movies[0].sku, "MOVIE-SKU-1");
+  assert.equal(imported.movies[1].title, "Second Native Movie");
+  assert.equal(imported.movies[1].sku, "MOVIE-SKU-2");
+}
+
 function testMetadataSmartSheetImport() {
   const imported = Core.importMetadataSmartSheetMatrix([
     ["Type", "Title", "Series", "Season", "Episode", "PF Premiere Date", "Term End Date", "New SKU", "External ID (Generated)", "Parent External ID"],
@@ -263,6 +312,8 @@ function testMetadataSmartSheetImport() {
   assert.equal(imported.movie.sku, "");
   assert.equal(imported.movie.startDate, "2026-12-17");
   assert.equal(imported.movie.endDate, "2029-08-31");
+  assert.equal(imported.movies.length, 1);
+  assert.equal(imported.movies[0].sku, "");
   assert.equal(imported.tv.seriesName, "Victory Beyond the Cup");
   assert.equal(imported.tv.seriesSku, "SERIES_UUID");
   assert.equal(imported.tv.seasonNumber, "1");
@@ -349,6 +400,7 @@ function testNativeWhatsOnTvImport() {
 
 testMovieStandard();
 testMovieYouTube();
+testMovieMultipleRows();
 testTvStandardAndYouTube();
 testTvEpisodeDatesOverrideSeriesDates();
 testTvMultiSeasonRows();
@@ -358,6 +410,7 @@ testStandardToYouTubeConversion();
 testYouTubeToStandardConversion();
 testWhatsOnMovieImport();
 testNativeWhatsOnProgramImport();
+testNativeWhatsOnMultipleMovieImport();
 testMetadataSmartSheetImport();
 testMetadataSmartSheetTvSkuSelection();
 testWhatsOnTvImport();

@@ -389,6 +389,10 @@ textarea:focus {
   min-width: 1320px;
 }
 
+.movie-table {
+  min-width: 980px;
+}
+
 .preview-grid th,
 .preview-grid td,
 .input-table th,
