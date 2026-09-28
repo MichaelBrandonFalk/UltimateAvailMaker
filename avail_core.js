@@ -7,8 +7,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function buildApi() {
   "use strict";
 
-  const VERSION = "V1_11";
-  const VERSION_LABEL = "V1.11";
+  const VERSION = "V1_12";
+  const VERSION_LABEL = "V1.12";
   const NY_TZ = "America/New_York";
   const YT_END_MAX_YMD = "2036-01-02";
 
@@ -135,8 +135,10 @@
 
   const METADATA_HEADER_HINTS = [
     "type", "title", "series", "season", "episode", "premieredate", "pfpremieredate",
-    "termenddate", "newsku", "seasonnum", "episodenum"
+    "vodstartdate", "termenddate", "newsku", "seasonnum", "episodenum"
   ];
+
+  const METADATA_START_DATE_FIELDS = ["VOD Start Date", "PF Premiere Date"];
 
   function template(sheetName, groupRow, fieldRow, width) {
     const fields = pad(fieldRow, width, "");
@@ -1005,7 +1007,7 @@
     return {
       title: firstCell(row, ["title"]),
       sku: metadataSku(row),
-      startDate: metadataDate(row, ["PF Premiere Date"]),
+      startDate: metadataDate(row, METADATA_START_DATE_FIELDS),
       endDate: metadataDate(row, ["Term End Date"]),
       gracenoteId: ""
     };
@@ -1056,7 +1058,7 @@
     ]);
     const seriesRow = matchingMetadataSeriesRow(seriesRows, seriesName) || {};
     const seasonRow = matchingMetadataSeasonRow(seasonRows, seriesName, seasonNumber) || (isMetadataSeasonRow(firstRow) ? firstRow : {});
-    const startDate = firstMetadataDate([seriesRow, seasonRow, firstEpisode, firstRow], ["PF Premiere Date"]);
+    const startDate = firstMetadataDate([seriesRow, seasonRow, firstEpisode, firstRow], METADATA_START_DATE_FIELDS);
     const endDate = firstMetadataDate([seriesRow, seasonRow, firstEpisode, firstRow], ["Term End Date"]);
     const seriesSku = metadataSku(seriesRow);
     const seasonSku = metadataSku(seasonRow);
@@ -1068,7 +1070,7 @@
         episodeName: firstCell(row, ["title"]),
         episodeSku: metadataSku(row),
         gracenoteEpisodeId: "",
-        startDate: metadataDate(row, ["PF Premiere Date"]) || startDate,
+        startDate: metadataDate(row, METADATA_START_DATE_FIELDS) || startDate,
         endDate: metadataDate(row, ["Term End Date"]) || endDate
       };
     }).filter(function keepMetadataEpisode(ep) {

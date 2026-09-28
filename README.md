@@ -1,6 +1,6 @@
 # Ultimate Avail Maker
 
-Current public version: `V1_10`.
+Current public version: `V1_12`.
 
 Public browser version: https://michaelbrandonfalk.github.io/UltimateAvailMaker/
 
@@ -88,7 +88,8 @@ For a four-season WhatsOn upload such as `Carpooling with Jesus Season 1 through
 
 WhatsOn remains the primary import source when both files are loaded. Metadata Smart Sheet imports fill blank fields, including blank Start Date and End Date fields, from these columns:
 
-- `PF Premiere Date`: Start Date
+- `VOD Start Date`: Start Date when populated
+- `PF Premiere Date`: Start Date fallback when `VOD Start Date` is blank
 - `Term End Date`: End Date
 - `Title`: Movie title, TV series title, or episode title depending on row type
 - `Type`: `Movie` uses the Movie tab. `Series`, `TVSHOW`, `Season`, `Episode`, and `Podcast` use the TV tab. `Podcast` is treated as a series-level row.
@@ -128,7 +129,7 @@ http://localhost:8765/
 Run the versioned build script from this directory:
 
 ```bash
-./build_ultimate_avail_maker_v1_10.sh
+./build_ultimate_avail_maker_v1_12.sh
 ```
 
 The script creates:

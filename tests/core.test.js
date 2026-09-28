@@ -300,17 +300,17 @@ function testNativeWhatsOnMultipleMovieImport() {
 
 function testMetadataSmartSheetImport() {
   const imported = Core.importMetadataSmartSheetMatrix([
-    ["Type", "Title", "Series", "Season", "Episode", "PF Premiere Date", "Term End Date", "New SKU", "External ID (Generated)", "Parent External ID"],
-    ["MOVIE", "Christmas By the Spoonful", "", "", "", "12/17/26", "08/31/29", "", "M_christmas-by-the-spoonful_vortex-media", ""],
-    ["PODCAST", "Victory Beyond the Cup", "Victory Beyond the Cup", "", "", "08/13/26", "08/13/31", "SERIES_UUID", "ERROR: Unsupported Type: PODCAST", ""],
-    ["SEASON", "Victory Beyond the Cup Season 1", "Victory Beyond the Cup", "1", "", "08/13/26", "08/13/31", "", "SEASON_ID", "SERIES_UUID"],
-    ["EPISODE", "Opening Match", "Victory Beyond the Cup", "1", "1", "08/13/26", "08/13/31", "", "EP_1", "SEASON_ID"],
-    ["EPISODE", "Final Whistle", "Victory Beyond the Cup", "1", "2", "08/20/26", "08/13/31", "EP_UUID_2", "EP_2", "SEASON_ID"]
+    ["Type", "Title", "Series", "Season", "Episode", "PF Premiere Date", "VOD Start Date", "Term End Date", "New SKU", "External ID (Generated)", "Parent External ID"],
+    ["MOVIE", "Christmas By the Spoonful", "", "", "", "12/17/26", "12/18/26", "08/31/29", "", "M_christmas-by-the-spoonful_vortex-media", ""],
+    ["PODCAST", "Victory Beyond the Cup", "Victory Beyond the Cup", "", "", "08/13/26", "08/14/26", "08/13/31", "SERIES_UUID", "ERROR: Unsupported Type: PODCAST", ""],
+    ["SEASON", "Victory Beyond the Cup Season 1", "Victory Beyond the Cup", "1", "", "08/13/26", "", "08/13/31", "", "SEASON_ID", "SERIES_UUID"],
+    ["EPISODE", "Opening Match", "Victory Beyond the Cup", "1", "1", "08/13/26", "08/15/26", "08/13/31", "", "EP_1", "SEASON_ID"],
+    ["EPISODE", "Final Whistle", "Victory Beyond the Cup", "1", "2", "08/20/26", "", "08/13/31", "EP_UUID_2", "EP_2", "SEASON_ID"]
   ]);
 
   assert.equal(imported.movie.title, "Christmas By the Spoonful");
   assert.equal(imported.movie.sku, "");
-  assert.equal(imported.movie.startDate, "2026-12-17");
+  assert.equal(imported.movie.startDate, "2026-12-18");
   assert.equal(imported.movie.endDate, "2029-08-31");
   assert.equal(imported.movies.length, 1);
   assert.equal(imported.movies[0].sku, "");
@@ -318,11 +318,13 @@ function testMetadataSmartSheetImport() {
   assert.equal(imported.tv.seriesSku, "SERIES_UUID");
   assert.equal(imported.tv.seasonNumber, "1");
   assert.equal(imported.tv.seasonSku, "");
-  assert.equal(imported.tv.startDate, "2026-08-13");
+  assert.equal(imported.tv.startDate, "2026-08-14");
   assert.equal(imported.tv.endDate, "2031-08-13");
   assert.equal(imported.tv.episodes.length, 2);
   assert.equal(imported.tv.episodes[0].episodeNumber, "1");
+  assert.equal(imported.tv.episodes[0].startDate, "2026-08-15");
   assert.equal(imported.tv.episodes[0].episodeSku, "");
+  assert.equal(imported.tv.episodes[1].startDate, "2026-08-20");
   assert.equal(imported.tv.episodes[1].episodeSku, "EP_UUID_2");
   assert.equal(imported.counts.podcasts, 1);
 }
