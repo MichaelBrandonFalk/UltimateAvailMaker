@@ -18,6 +18,8 @@
 
   document.addEventListener("DOMContentLoaded", function init() {
     $('[data-version]').textContent = Core.VERSION_LABEL;
+    const downloadLink = $(".download-link");
+    if (downloadLink && window.location.protocol === "file:") downloadLink.hidden = true;
     wireTabs();
     wireDateInputs();
     wireDatePickers();

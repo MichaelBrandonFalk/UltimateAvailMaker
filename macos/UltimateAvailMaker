@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONTENTS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+INDEX_PATH="${CONTENTS_DIR}/Resources/site/index.html"
+
+if [[ ! -f "${INDEX_PATH}" ]]; then
+  /usr/bin/osascript -e 'display alert "Ultimate Avail Maker could not start" message "The app files are missing. Download a fresh copy of the app." as critical'
+  exit 1
+fi
+
+/usr/bin/open "${INDEX_PATH}"
