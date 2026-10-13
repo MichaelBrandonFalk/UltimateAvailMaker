@@ -1,6 +1,6 @@
 # Ultimate Avail Maker
 
-Current public version: `V1_13`.
+Current public version: `V1_14`.
 
 Public browser version: https://michaelbrandonfalk.github.io/UltimateAvailMaker/
 
@@ -110,7 +110,7 @@ Any YouTube end date later than `2036-01-02` is clamped to the New York end-of-d
 
 ## Local Use
 
-The website download contains `Ultimate Avail Maker V1.13.app`. Unzip it, then double-click the app to open the bundled local version in the default browser. No Terminal command or installation is required.
+The website download contains `Ultimate Avail Maker V1.14.app`. Unzip it, then double-click the app to open the local version in its own native macOS window. The app remains visible in the Dock and app switcher and uses native Open and Save dialogs. No browser, Terminal command, or installation is required.
 
 If macOS blocks the first launch because the app was downloaded from the internet, Control-click the app, choose **Open**, then confirm **Open**.
 
@@ -131,16 +131,16 @@ http://localhost:8765/
 Run the versioned build script from this directory:
 
 ```bash
-./build_ultimate_avail_maker_v1_13.sh
+./build_ultimate_avail_maker_v1_14.sh
 ```
 
 The script creates:
 
 ```text
-downloads/Ultimate Avail Maker V1_13-macOS.zip
+downloads/Ultimate Avail Maker V1_14-macOS.zip
 ```
 
-The ZIP contains one clickable macOS app bundle. The script refuses to overwrite an existing app build or ZIP.
+The ZIP contains one clickable universal macOS app bundle for Apple silicon and Intel Macs. The script refuses to overwrite an existing app build or ZIP.
 
 ## Browser Version
 

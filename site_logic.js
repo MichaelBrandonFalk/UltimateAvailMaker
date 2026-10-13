@@ -931,6 +931,14 @@
       worksheet["!rows"] = [{ hpt: 20 }, { hpt: 20 }, { hpt: 18 }];
       XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName(sheetDef.sheetName));
     });
+    const nativeSave = nativeMessageHandler("saveWorkbook");
+    if (nativeSave) {
+      nativeSave.postMessage({
+        filename,
+        base64: XLSX.write(workbook, { type: "base64", bookType: "xlsx" })
+      });
+      return;
+    }
     XLSX.writeFile(workbook, filename, { bookType: "xlsx" });
   }
 
@@ -970,6 +978,11 @@
     const rows = withHeaders ? sheet.rows : sheet.rows.slice(3);
     if (!rows.length) throw new Error("Nothing to copy yet.");
     const text = rowsToTsv(rows);
+    const nativeCopy = nativeMessageHandler("copyText");
+    if (nativeCopy) {
+      nativeCopy.postMessage({ text });
+      return Promise.resolve();
+    }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       return navigator.clipboard.writeText(text).catch(function fallbackClipboard() {
         fallbackCopyText(text);
@@ -977,6 +990,11 @@
     }
     fallbackCopyText(text);
     return Promise.resolve();
+  }
+
+  function nativeMessageHandler(name) {
+    const handlers = window.webkit && window.webkit.messageHandlers;
+    return handlers && handlers[name] ? handlers[name] : null;
   }
 
   function fallbackCopyText(text) {
