@@ -1,0 +1,71 @@
+{
+  "name": "ultimate-avail-maker",
+  "version": "1.15.0",
+  "description": "Create and convert Standard EMA and YouTube avails workbooks.",
+  "main": "desktop/main.js",
+  "author": "Michael Brandon Falk",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:windows": "electron-builder --win portable --x64 --publish never",
+    "dist:linux": "electron-builder --linux AppImage deb --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.7.2",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.michaelbrandonfalk.ultimateavailmaker",
+    "productName": "Ultimate Avail Maker",
+    "asar": true,
+    "compression": "maximum",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "index.html",
+      "styles.css",
+      "site_logic.js",
+      "avail_core.js",
+      "libs/**/*",
+      "LICENSES/**/*",
+      "README.md",
+      "THIRD_PARTY_NOTICES.md",
+      "desktop/**/*",
+      "assets/ultimate-avail-maker-logo.png"
+    ],
+    "win": {
+      "icon": "assets/ultimate-avail-maker-logo.png",
+      "artifactName": "Ultimate-Avail-Maker-V1_15-Windows-${arch}.${ext}",
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "icon": "assets/ultimate-avail-maker-logo.png",
+      "artifactName": "Ultimate-Avail-Maker-V1_15-Linux-Mint-${arch}.${ext}",
+      "category": "Office",
+      "synopsis": "Create and convert avails workbooks",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  }
+}

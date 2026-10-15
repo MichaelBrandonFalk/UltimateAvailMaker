@@ -1,6 +1,6 @@
 # Ultimate Avail Maker
 
-Current public version: `V1_14`.
+Current public version: `V1_15`.
 
 Public browser version: https://michaelbrandonfalk.github.io/UltimateAvailMaker/
 
@@ -108,11 +108,13 @@ Any YouTube end date later than `2036-01-02` is clamped to the New York end-of-d
 2036-01-03T04:59:59Z
 ```
 
-## Local Use
+## Desktop Apps
 
-The website download contains `Ultimate Avail Maker V1.14.app`. Unzip it, then double-click the app to open the local version in its own native macOS window. The app remains visible in the Dock and app switcher and uses native Open and Save dialogs. No browser, Terminal command, or installation is required.
+The website provides self-contained desktop packages for macOS, Windows, and Linux Mint. Every package bundles the complete interface and spreadsheet engine, opens in its own application window, and does not require a browser, Node.js, or Python.
 
-If macOS blocks the first launch because the app was downloaded from the internet, Control-click the app, choose **Open**, then confirm **Open**.
+- macOS: Download `Ultimate Avail Maker V1_15-macOS.zip`, unzip it, and double-click `Ultimate Avail Maker V1.15.app`. The universal app supports Apple silicon and Intel Macs. If macOS blocks the first launch, Control-click the app, choose **Open**, then confirm **Open**.
+- Windows: Download `Ultimate-Avail-Maker-V1_15-Windows-x64.exe` and double-click it. This is a portable 64-bit app and does not require installation. If Microsoft Defender SmartScreen appears, choose **More info**, then **Run anyway**.
+- Linux Mint: Download `Ultimate-Avail-Maker-V1_15-Linux-Mint-x64.deb` and open it with Software Manager to install the app. The GitHub release also includes a self-contained AppImage; mark it as executable in file Properties before opening it.
 
 For repository development, open `index.html` directly or run a local static server:
 
@@ -131,16 +133,16 @@ http://localhost:8765/
 Run the versioned build script from this directory:
 
 ```bash
-./build_ultimate_avail_maker_v1_14.sh
+./build_ultimate_avail_maker_v1_15.sh
 ```
 
 The script creates:
 
 ```text
-downloads/Ultimate Avail Maker V1_14-macOS.zip
+downloads/Ultimate Avail Maker V1_15-macOS.zip
 ```
 
-The ZIP contains one clickable universal macOS app bundle for Apple silicon and Intel Macs. The script refuses to overwrite an existing app build or ZIP.
+The ZIP contains one clickable universal macOS app bundle for Apple silicon and Intel Macs. The script refuses to overwrite an existing app build or ZIP. Windows and Linux packages are built on their native GitHub Actions runners from `package.json` and `.github/workflows/desktop-release.yml`.
 
 ## Browser Version
 

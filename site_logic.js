@@ -18,8 +18,8 @@
 
   document.addEventListener("DOMContentLoaded", function init() {
     $('[data-version]').textContent = Core.VERSION_LABEL;
-    const downloadLink = $(".download-link");
-    if (downloadLink && window.location.protocol === "file:") downloadLink.hidden = true;
+    const downloadActions = $(".download-actions");
+    if (downloadActions && window.location.protocol === "file:") downloadActions.hidden = true;
     wireTabs();
     wireDateInputs();
     wireDatePickers();
@@ -993,6 +993,10 @@
   }
 
   function nativeMessageHandler(name) {
+    const desktop = window.ultimateAvailDesktop;
+    if (desktop && typeof desktop[name] === "function") {
+      return { postMessage: desktop[name] };
+    }
     const handlers = window.webkit && window.webkit.messageHandlers;
     return handlers && handlers[name] ? handlers[name] : null;
   }

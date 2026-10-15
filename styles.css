@@ -95,6 +95,17 @@ h1 {
   box-shadow: 0 8px 24px rgba(27, 39, 39, 0.08);
 }
 
+.download-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.download-actions[hidden] {
+  display: none;
+}
+
 .workspace {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -495,6 +506,10 @@ textarea:focus {
     flex-direction: column;
   }
 
+  .download-actions {
+    justify-content: flex-start;
+  }
+
   .form-grid,
   .convert-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -534,6 +549,10 @@ textarea:focus {
   .secondary-action,
   .download-link {
     text-align: center;
+    width: 100%;
+  }
+
+  .download-actions {
     width: 100%;
   }
 }

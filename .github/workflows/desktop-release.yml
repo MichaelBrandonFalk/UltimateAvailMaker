@@ -1,0 +1,80 @@
+name: Build Windows and Linux Apps
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - v1.15
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            command: npm run dist:windows
+            artifact: windows
+            files: dist/*.exe
+          - os: ubuntu-22.04
+            command: npm run dist:linux
+            artifact: linux-mint
+            files: |
+              dist/*.AppImage
+              dist/*.deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build desktop package
+        run: ${{ matrix.command }}
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ultimate-avail-maker-${{ matrix.artifact }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download desktop packages
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Add macOS package
+        run: cp "downloads/Ultimate Avail Maker V1_15-macOS.zip" "release-assets/Ultimate-Avail-Maker-V1_15-macOS.zip"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}"
+          release-assets/*
+          --repo "${GITHUB_REPOSITORY}"
+          --verify-tag
+          --title "Ultimate Avail Maker V1.15"
+          --notes "Native desktop release for macOS, Windows, and Linux Mint. Windows is a portable executable. Linux Mint includes both a DEB installer and an AppImage. Every package bundles the Ultimate Avail Maker interface and spreadsheet engine."
