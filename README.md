@@ -114,7 +114,7 @@ The website provides self-contained desktop packages for macOS, Windows, and Lin
 
 - macOS: Download `Ultimate Avail Maker V1_15-macOS.zip`, unzip it, and double-click `Ultimate Avail Maker V1.15.app`. The universal app supports Apple silicon and Intel Macs. If macOS blocks the first launch, Control-click the app, choose **Open**, then confirm **Open**.
 - Windows: Download `Ultimate-Avail-Maker-V1_15-Windows-x64.exe` and double-click it. This is a portable 64-bit app and does not require installation. If Microsoft Defender SmartScreen appears, choose **More info**, then **Run anyway**.
-- Linux Mint: Download `Ultimate-Avail-Maker-V1_15-Linux-Mint-x64.deb` and open it with Software Manager to install the app. The GitHub release also includes a self-contained AppImage; mark it as executable in file Properties before opening it.
+- Linux Mint: Download `Ultimate-Avail-Maker-V1_15-Linux-Mint-amd64.deb` and open it with Software Manager to install the app. The GitHub release also includes a self-contained AppImage; mark it as executable in file Properties before opening it.
 
 For repository development, open `index.html` directly or run a local static server:
 
