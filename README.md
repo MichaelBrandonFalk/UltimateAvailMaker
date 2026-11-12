@@ -1,6 +1,6 @@
 # Ultimate Avail Maker
 
-Current public version: `V1_15`.
+Current public version: `V1_16`.
 
 Public browser version: https://michaelbrandonfalk.github.io/UltimateAvailMaker/
 
@@ -55,6 +55,8 @@ Ultimate Avail Maker is a browser-based local tool for creating and converting a
 The TV-level Season number, Season SKU, Start date, and End date are used as fallback values for episode rows. Use the apply-date buttons to copy the TV-level date to every episode row.
 
 Date fields accept pasted values such as `6/10/2029`, `2029-06-10`, or `June 10, 2029`, and export as `yyyy-mm-dd`.
+
+Any date value containing `TBD` is treated as blank. The app never guesses a date from partial text such as `TBD 12/26`, `TBD Jan 2027`, or `09/30/2026 /TBD`.
 
 WhatsOn movie uploads populate the movie SKU from `VOD ID SKU`. For example, `An Ozark Mountain Christmas.xlsx` imports SKU `1fe20853-ec64-585c-8d22-26d1eecd207c`.
 
@@ -112,9 +114,9 @@ Any YouTube end date later than `2036-01-02` is clamped to the New York end-of-d
 
 The website provides self-contained desktop packages for macOS, Windows, and Linux Mint. Every package bundles the complete interface and spreadsheet engine, opens in its own application window, and does not require a browser, Node.js, or Python.
 
-- macOS: Download `Ultimate Avail Maker V1_15-macOS.zip`, unzip it, and double-click `Ultimate Avail Maker V1.15.app`. The universal app supports Apple silicon and Intel Macs. If macOS blocks the first launch, Control-click the app, choose **Open**, then confirm **Open**.
-- Windows: Download `Ultimate-Avail-Maker-V1_15-Windows-x64.exe` and double-click it. This is a portable 64-bit app and does not require installation. If Microsoft Defender SmartScreen appears, choose **More info**, then **Run anyway**.
-- Linux Mint: Download `Ultimate-Avail-Maker-V1_15-Linux-Mint-amd64.deb` and open it with Software Manager to install the app. The GitHub release also includes a self-contained AppImage; mark it as executable in file Properties before opening it.
+- macOS: Download `Ultimate Avail Maker V1_16-macOS.zip`, unzip it, and double-click `Ultimate Avail Maker V1.16.app`. The universal app supports Apple silicon and Intel Macs. If macOS blocks the first launch, Control-click the app, choose **Open**, then confirm **Open**.
+- Windows: Download `Ultimate-Avail-Maker-V1_16-Windows-x64.exe` and double-click it. This is a portable 64-bit app and does not require installation. If Microsoft Defender SmartScreen appears, choose **More info**, then **Run anyway**.
+- Linux Mint: Download `Ultimate-Avail-Maker-V1_16-Linux-Mint-amd64.deb` and open it with Software Manager to install the app. The GitHub release also includes a self-contained AppImage; mark it as executable in file Properties before opening it.
 
 For repository development, open `index.html` directly or run a local static server:
 
@@ -133,13 +135,13 @@ http://localhost:8765/
 Run the versioned build script from this directory:
 
 ```bash
-./build_ultimate_avail_maker_v1_15.sh
+./build_ultimate_avail_maker_v1_16.sh
 ```
 
 The script creates:
 
 ```text
-downloads/Ultimate Avail Maker V1_15-macOS.zip
+downloads/Ultimate Avail Maker V1_16-macOS.zip
 ```
 
 The ZIP contains one clickable universal macOS app bundle for Apple silicon and Intel Macs. The script refuses to overwrite an existing app build or ZIP. Windows and Linux packages are built on their native GitHub Actions runners from `package.json` and `.github/workflows/desktop-release.yml`.

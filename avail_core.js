@@ -7,8 +7,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function buildApi() {
   "use strict";
 
-  const VERSION = "V1_15";
-  const VERSION_LABEL = "V1.15";
+  const VERSION = "V1_16";
+  const VERSION_LABEL = "V1.16";
   const NY_TZ = "America/New_York";
   const YT_END_MAX_YMD = "2036-01-02";
 
@@ -445,6 +445,7 @@
     if (value instanceof Date && !Number.isNaN(value.getTime())) return formatYmdInTimeZone(value, NY_TZ);
     const s = clean(value);
     if (!s) return "";
+    if (/\btbd\b/i.test(s)) return "";
     const ymdMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
     if (ymdMatch) return ymdFromParts(ymdMatch[1], ymdMatch[2], ymdMatch[3]);
     const mdyMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);

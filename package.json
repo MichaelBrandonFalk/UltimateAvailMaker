@@ -1,6 +1,6 @@
 {
   "name": "ultimate-avail-maker",
-  "version": "1.15.0",
+  "version": "1.16.0",
   "description": "Create and convert Standard EMA and YouTube avails workbooks.",
   "main": "desktop/main.js",
   "author": {
@@ -41,7 +41,7 @@
     ],
     "win": {
       "icon": "assets/ultimate-avail-maker-logo.png",
-      "artifactName": "Ultimate-Avail-Maker-V1_15-Windows-${arch}.${ext}",
+      "artifactName": "Ultimate-Avail-Maker-V1_16-Windows-${arch}.${ext}",
       "target": [
         {
           "target": "portable",
@@ -53,7 +53,7 @@
     },
     "linux": {
       "icon": "assets/ultimate-avail-maker-logo.png",
-      "artifactName": "Ultimate-Avail-Maker-V1_15-Linux-Mint-${arch}.${ext}",
+      "artifactName": "Ultimate-Avail-Maker-V1_16-Linux-Mint-${arch}.${ext}",
       "category": "Office",
       "maintainer": "Michael Brandon Falk <MichaelBrandonFalk@users.noreply.github.com>",
       "syncDesktopName": true,

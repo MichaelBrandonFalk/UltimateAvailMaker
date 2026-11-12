@@ -200,6 +200,9 @@ function testPastedDateFormats() {
   assert.equal(Core.coerceToYmd("2029-6-10"), "2029-06-10");
   assert.equal(Core.coerceToYmd("12/17/26"), "2026-12-17");
   assert.equal(Core.coerceToYmd("12/31/99"), "2099-12-31");
+  assert.equal(Core.coerceToYmd("TBD 12/26"), "");
+  assert.equal(Core.coerceToYmd("tbd - 08/31/29"), "");
+  assert.equal(Core.coerceToYmd("09/30/2026 /TBD"), "");
 }
 
 function testAvailFileNames() {
@@ -329,6 +332,17 @@ function testMetadataSmartSheetImport() {
   assert.equal(imported.counts.podcasts, 1);
 }
 
+function testMetadataSmartSheetTbdDatesStayBlank() {
+  const imported = Core.importMetadataSmartSheetMatrix([
+    ["Type", "Title", "PF Premiere Date", "Term End Date", "New SKU"],
+    ["MOVIE", "Undated Movie", "TBD 12/26", "TBD - 08/31/29", "MOVIE_SKU"]
+  ]);
+
+  assert.equal(imported.movie.title, "Undated Movie");
+  assert.equal(imported.movie.startDate, "");
+  assert.equal(imported.movie.endDate, "");
+}
+
 function testMetadataSmartSheetTvSkuSelection() {
   const imported = Core.importMetadataSmartSheetMatrix([
     ["Type", "Title", "Series", "Season", "Episode", "PF Premiere Date", "Term End Date", "New SKU", "External ID (Generated)", "Parent External ID", "Season Num", "Episode Num"],
@@ -414,6 +428,7 @@ testWhatsOnMovieImport();
 testNativeWhatsOnProgramImport();
 testNativeWhatsOnMultipleMovieImport();
 testMetadataSmartSheetImport();
+testMetadataSmartSheetTbdDatesStayBlank();
 testMetadataSmartSheetTvSkuSelection();
 testWhatsOnTvImport();
 testNativeWhatsOnTvImport();
